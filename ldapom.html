@@ -1,0 +1,170 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module ldapom</title>
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>ldapom</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/flori/python/ldapom/ldapom.py">/home/flori/python/ldapom/ldapom.py</a></font></td></tr></table>
+    <p><tt>A&nbsp;LDAP&nbsp;<a href="__builtin__.html#object">object</a>-mapper</tt></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#aa55cc">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="ldap.html">ldap</a><br>
+</td><td width="25%" valign=top></td><td width="25%" valign=top></td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ee77aa">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Classes</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#ee77aa"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl>
+<dt><font face="helvetica, arial"><a href="__builtin__.html#object">__builtin__.object</a>
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial"><a href="ldapom.html#LdapAttribute">LdapAttribute</a>
+</font></dt><dt><font face="helvetica, arial"><a href="ldapom.html#LdapConnection">LdapConnection</a>
+</font></dt><dt><font face="helvetica, arial"><a href="ldapom.html#LdapNode">LdapNode</a>
+</font></dt></dl>
+</dd>
+</dl>
+ <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="LdapAttribute">class <strong>LdapAttribute</strong></a>(<a href="__builtin__.html#object">__builtin__.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>Holds&nbsp;an&nbsp;set&nbsp;of&nbsp;LDAP-Attributes&nbsp;with&nbsp;the&nbsp;same&nbsp;name.<br>
+All&nbsp;changes&nbsp;are&nbsp;recorded,&nbsp;so&nbsp;they&nbsp;can&nbsp;be&nbsp;push&nbsp;to&nbsp;ldap_modify<br>
+directly<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="LdapAttribute-__contains__"><strong>__contains__</strong></a>(self, item)</dt></dl>
+
+<dl><dt><a name="LdapAttribute-__delitem__"><strong>__delitem__</strong></a>(self, key)</dt></dl>
+
+<dl><dt><a name="LdapAttribute-__getitem__"><strong>__getitem__</strong></a>(self, key)</dt></dl>
+
+<dl><dt><a name="LdapAttribute-__init__"><strong>__init__</strong></a>(self, name, value, add<font color="#909090">=False</font>)</dt></dl>
+
+<dl><dt><a name="LdapAttribute-__iter__"><strong>__iter__</strong></a>(self)</dt></dl>
+
+<dl><dt><a name="LdapAttribute-__len__"><strong>__len__</strong></a>(self)</dt></dl>
+
+<dl><dt><a name="LdapAttribute-__repr__"><strong>__repr__</strong></a>(self)</dt></dl>
+
+<dl><dt><a name="LdapAttribute-__setitem__"><strong>__setitem__</strong></a>(self, key, value)</dt></dl>
+
+<dl><dt><a name="LdapAttribute-__str__"><strong>__str__</strong></a>(self)</dt><dd><tt>if&nbsp;there's&nbsp;only&nbsp;one&nbsp;item,&nbsp;return&nbsp;it&nbsp;directly</tt></dd></dl>
+
+<dl><dt><a name="LdapAttribute-append"><strong>append</strong></a>(self, value)</dt><dd><tt>add&nbsp;an&nbsp;attribute</tt></dd></dl>
+
+<dl><dt><a name="LdapAttribute-discard_change_list"><strong>discard_change_list</strong></a>(self)</dt><dd><tt>called&nbsp;when&nbsp;attribute-changes&nbsp;were&nbsp;successfully&nbsp;saved</tt></dd></dl>
+
+<dl><dt><a name="LdapAttribute-get_change_list"><strong>get_change_list</strong></a>(self)</dt><dd><tt>get&nbsp;all&nbsp;changes&nbsp;to&nbsp;this&nbsp;attribute&nbsp;in&nbsp;ldap_modify-syntax</tt></dd></dl>
+
+<dl><dt><a name="LdapAttribute-set_value"><strong>set_value</strong></a>(self, value)</dt><dd><tt>set&nbsp;single&nbsp;value,&nbsp;discard&nbsp;all&nbsp;existing&nbsp;ones</tt></dd></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="LdapConnection">class <strong>LdapConnection</strong></a>(<a href="__builtin__.html#object">__builtin__.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>This&nbsp;Object&nbsp;holds&nbsp;all&nbsp;parameters&nbsp;to&nbsp;connect&nbsp;to&nbsp;an&nbsp;ldapserver<br>
+and&nbsp;provide&nbsp;a&nbsp;minimal&nbsp;convenience.<br>
+Methods&nbsp;marked&nbsp;as&nbsp;internal&nbsp;in&nbsp;the&nbsp;docstring&nbsp;should&nbsp;be&nbsp;used&nbsp;only<br>
+by&nbsp;this&nbsp;modul.<br>
+&nbsp;<br>
+Methods&nbsp;for&nbsp;external&nbsp;relevance&nbsp;so&nbsp;far:<br>
+*&nbsp;__init__<br>
+*&nbsp;getLdapNode<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="LdapConnection-__init__"><strong>__init__</strong></a>(self, uri, base, login, password)</dt></dl>
+
+<dl><dt><a name="LdapConnection-add"><strong>add</strong></a> = new(self, *args, **kws)</dt><dd><tt>wrapper&nbsp;function,&nbsp;catching&nbsp;the&nbsp;exception</tt></dd></dl>
+
+<dl><dt><a name="LdapConnection-authenticate"><strong>authenticate</strong></a>(self, dn, password)</dt><dd><tt>Internal:&nbsp;try&nbsp;to&nbsp;authenticate&nbsp;on&nbsp;a&nbsp;seperate&nbsp;connection</tt></dd></dl>
+
+<dl><dt><a name="LdapConnection-check_if_dn_exists"><strong>check_if_dn_exists</strong></a>(self, dn)</dt><dd><tt>search&nbsp;ldap-server&nbsp;for&nbsp;dn&nbsp;and&nbsp;return&nbsp;a&nbsp;boolean</tt></dd></dl>
+
+<dl><dt><a name="LdapConnection-delete"><strong>delete</strong></a> = new(self, *args, **kws)</dt><dd><tt>wrapper&nbsp;function,&nbsp;catching&nbsp;the&nbsp;exception</tt></dd></dl>
+
+<dl><dt><a name="LdapConnection-get_ldap_node"><strong>get_ldap_node</strong></a>(self, dn)</dt><dd><tt>Create&nbsp;<a href="#LdapNode">LdapNode</a>-Object&nbsp;linked&nbsp;to&nbsp;this&nbsp;connection</tt></dd></dl>
+
+<dl><dt><a name="LdapConnection-modify"><strong>modify</strong></a> = new(self, *args, **kws)</dt><dd><tt>wrapper&nbsp;function,&nbsp;catching&nbsp;the&nbsp;exception</tt></dd></dl>
+
+<dl><dt><a name="LdapConnection-new_ldap_node"><strong>new_ldap_node</strong></a>(self, dn)</dt><dd><tt>Create&nbsp;new&nbsp;<a href="#LdapNode">LdapNode</a>-Object&nbsp;linked&nbsp;to&nbsp;this&nbsp;connection</tt></dd></dl>
+
+<dl><dt><a name="LdapConnection-query"><strong>query</strong></a> = new(self, *args, **kws)</dt><dd><tt>wrapper&nbsp;function,&nbsp;catching&nbsp;the&nbsp;exception<br>
+(acting&nbsp;as&nbsp;generator&nbsp;function)</tt></dd></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="LdapNode">class <strong>LdapNode</strong></a>(<a href="__builtin__.html#object">__builtin__.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>Holds&nbsp;an&nbsp;ldap-<a href="__builtin__.html#object">object</a>&nbsp;represented&nbsp;by&nbsp;the&nbsp;dn&nbsp;(distinguishable&nbsp;name).<br>
+attributes&nbsp;are&nbsp;fetched&nbsp;from&nbsp;ldapserver&nbsp;lazily,&nbsp;so&nbsp;you&nbsp;can&nbsp;create&nbsp;objects<br>
+without&nbsp;network&nbsp;traffic.<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="LdapNode-__delattr__"><strong>__delattr__</strong></a>(self, name)</dt></dl>
+
+<dl><dt><a name="LdapNode-__getattr__"><strong>__getattr__</strong></a>(self, name)</dt><dd><tt>get&nbsp;an&nbsp;ldap-attribute&nbsp;lazyly<br>
+*&nbsp;attributes&nbsp;starting&nbsp;with&nbsp;is_*&nbsp;are&nbsp;mapped&nbsp;to&nbsp;a&nbsp;check,&nbsp;if&nbsp;the&nbsp;objectClass&nbsp;is&nbsp;present</tt></dd></dl>
+
+<dl><dt><a name="LdapNode-__init__"><strong>__init__</strong></a>(self, conn, dn, new<font color="#909090">=False</font>)</dt><dd><tt>Create&nbsp;lazy&nbsp;Node&nbsp;Object&nbsp;from&nbsp;dn</tt></dd></dl>
+
+<dl><dt><a name="LdapNode-__repr__"><strong>__repr__</strong></a>(self)</dt></dl>
+
+<dl><dt><a name="LdapNode-__setattr__"><strong>__setattr__</strong></a>(self, name, value)</dt><dd><tt>set&nbsp;ldap&nbsp;attribute</tt></dd></dl>
+
+<dl><dt><a name="LdapNode-__str__"><strong>__str__</strong></a>(self)</dt></dl>
+
+<dl><dt><a name="LdapNode-check_password"><strong>check_password</strong></a>(self, password)</dt><dd><tt>check&nbsp;password&nbsp;for&nbsp;this&nbsp;ldap-<a href="__builtin__.html#object">object</a></tt></dd></dl>
+
+<dl><dt><a name="LdapNode-delete"><strong>delete</strong></a>(self)</dt><dd><tt>delete&nbsp;this&nbsp;<a href="__builtin__.html#object">object</a>&nbsp;in&nbsp;ldap</tt></dd></dl>
+
+<dl><dt><a name="LdapNode-save"><strong>save</strong></a>(self)</dt><dd><tt>Save&nbsp;any&nbsp;changes&nbsp;to&nbsp;the&nbsp;<a href="__builtin__.html#object">object</a></tt></dd></dl>
+
+<dl><dt><a name="LdapNode-set_password"><strong>set_password</strong></a>(self, password)</dt><dd><tt>set&nbsp;password&nbsp;for&nbsp;this&nbsp;ldap-<a href="__builtin__.html#object">object</a></tt></dd></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+</td></tr></table></td></tr></table>
+</body></html>

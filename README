@@ -1,1 +1,28 @@
 This python module provides a simple LDAP object mapper
+
+ License:
+
+MIT, so do what you want, but leave the copyright notice in the code
+
+ Question:
+
+mail@f1ori.de
+
+ Usage:
+
+>>> import ldapom
+>>> lc = ldapom.LdapConnection(uri='ldap://localhost:1389', base='dc=example,dc=com', login='cn=admin,dc=example,dc=com', password='admin')
+>>> node = lc.get_ldap_node('cn=f1ori,ou=people,dc=example,dc=com')
+>>> node # just show
+<LdapNode: cn=f1ori,ou=people,dc=example,dc=com>
+>>> node.givenName # show name
+<LdapAttribute: givenName=Richter>
+>>> node.givenName = 'Meier' # change givenname
+>>> node.save() # save all changes
+>>> node.delete() # delete
+
+# new node:
+>>> node2 = lc.new_ldap_node('cn=newuser,ou=people,dc=example,dc=com')
+>>> node2.objectClass = ['class1', 'class2']
+>>> node2.givenName = 'new'
+>>> node2.save()
