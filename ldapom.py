@@ -3,7 +3,7 @@
 "A LDAP object-mapper"
 
 # Copyright (c) 2010 Florian Richter <mail@f1ori.de>
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the
 # "Software"), to deal in the Software without restriction, including
@@ -11,10 +11,10 @@
 # distribute, sublicense, and/or sell copies of the Software, and to
 # permit persons to whom the Software is furnished to do so, subject to
 # the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included
 # in all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
 # OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 # MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -24,6 +24,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import ldap
+
 
 # decorators
 def _retry_on_disconnect(func):
@@ -37,6 +38,7 @@ def _retry_on_disconnect(func):
             self._connect()
         return func(self, *args, **kws)
     return new
+
 
 def _retry_on_disconnect_gen(func):
     "decorator for generator functions to handle disconnection"
@@ -59,6 +61,7 @@ def _retry_on_disconnect_gen(func):
 
     return new
 
+
 class LdapConnection(object):
     """
         This Object holds all parameters to connect to an ldapserver
@@ -72,7 +75,7 @@ class LdapConnection(object):
     """
 
     def __init__(self, uri, base, login, password):
-        self._lo = None # ldap-connection
+        self._lo = None  # ldap-connection
         self._uri = uri
         self._base = base
         self._login = login
@@ -110,7 +113,6 @@ class LdapConnection(object):
         res_type, res_data = self._lo.modify_s(dn, change)
         if res_type != ldap.RES_MODIFY:
             raise ldap.LDAPError, "Wrong result type"
-
 
     @_retry_on_disconnect
     def delete(self, dn):
@@ -151,6 +153,7 @@ class LdapConnection(object):
     def new_ldap_node(self, dn):
         "Create new LdapNode-Object linked to this connection"
         return LdapNode(self, dn, new=True)
+
 
 class LdapAttribute(object):
     """
@@ -224,8 +227,8 @@ class LdapAttribute(object):
         if self._replace_all:
             if len(self) == 0:
                 return (ldap.MOD_DELETE, self._name, None)
-            change_list = [ (ldap.MOD_REPLACE, self._name, x) for x in self._values[0:1]]
-            change_list += [ (ldap.MOD_ADD, self._name, x) for x in self._values[1:] ]
+            change_list = [(ldap.MOD_REPLACE, self._name, x) for x in self._values[0:1]]
+            change_list += [(ldap.MOD_ADD, self._name, x) for x in self._values[1:]]
             return change_list
         return self._added
 
@@ -263,7 +266,7 @@ class LdapNode(object):
             # query attributes
             attr = list(self._conn.query(base=self._dn, scope=ldap.SCOPE_BASE))[0][1]
             # wrap them into LdapAttribute objects
-            self._attr = dict([ (x[0], LdapAttribute(x[0], x[1])) for x in attr.items() ])
+            self._attr = dict([(x[0], LdapAttribute(x[0], x[1])) for x in attr.items()])
         if name.startswith("is_"):
             return name[3:] in self._attr["objectClass"]
         if name in self._attr:
@@ -280,7 +283,7 @@ class LdapNode(object):
             # query attributes
             attr = list(self._conn.query(base=self._dn, scope=ldap.SCOPE_BASE))[0][1]
             # wrap them into LdapAttribute objects
-            self._attr = dict([ (x[0], LdapAttribute(x[0], x[1])) for x in attr.items()])
+            self._attr = dict([(x[0], LdapAttribute(x[0], x[1])) for x in attr.items()])
         if name in self._attr:
             self._attr[name].set_value(value)
         else:
@@ -291,7 +294,7 @@ class LdapNode(object):
             # query attributes
             attr = list(self._conn.query(base=self._dn, scope=ldap.SCOPE_BASE))[0][1]
             # wrap them into LdapAttribute objects
-            self._attr = dict([ (x[0], LdapAttribute(x[0], x[1])) for x in attr.items() ])
+            self._attr = dict([(x[0], LdapAttribute(x[0], x[1])) for x in attr.items()])
         del self._attr[name]
         self._to_delete.append(name)
 
@@ -304,11 +307,11 @@ class LdapNode(object):
     def save(self):
         """Save any changes to the object"""
         if self._new:
-            change_list = [ (x._name, x._values) for x in self._attr.values() ]
+            change_list = [(x._name, x._values) for x in self._attr.values()]
             print "ldap_add: %s" % change_list
             self._conn.add(self._dn, change_list)
         else:
-            change_list = [ (ldap.MOD_DELETE, x, None) for x in self._to_delete ]
+            change_list = [(ldap.MOD_DELETE, x, None) for x in self._to_delete]
             for attr in self._attr.values():
                 change_list.extend(attr.get_change_list())
             if len(change_list) == 0:
@@ -327,7 +330,7 @@ class LdapNode(object):
 
     def check_password(self, password):
         "check password for this ldap-object"
-        return self._conn.authenticate( self._dn, password ) 
+        return self._conn.authenticate(self._dn, password)
 
     def set_password(self, password):
         "set password for this ldap-object"
