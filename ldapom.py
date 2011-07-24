@@ -355,9 +355,9 @@ class LdapNode(object):
         return self._conn.authenticate( self._dn.encode("utf-8"), password ) 
 
     def set_password(self, password):
-        "set password for this ldap-object"
-        # TODO: implemement encryption with crypt
-        self.__setattr__(u'userPassword', unicode(password))
+        "set password for this ldap-object immediately"
+        # Issue a LDAP Password Modify Extended Operation
+        self._conn._lo.passwd_s(self._dn, None, password)
 
 
 # vim: ai sw=4 expandtab
