@@ -325,6 +325,9 @@ class LdapNode(object):
 
     def save(self):
         """Save any changes to the object"""
+        if self._attr == None:
+            # No changes yet
+            return
         if self._new:
             change_list = [ (x._name.encode("utf-8"), [y.encode("utf-8") for y in x]) for x in self._attr.values() ]
             print "ldap_add: %s" % change_list
