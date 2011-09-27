@@ -25,6 +25,7 @@
 
 import ldap
 
+LDAPOM_VERBOSE = False
 
 # decorators
 def _retry_on_disconnect(func):
@@ -80,17 +81,21 @@ class LdapConnection(object):
         * getLdapNode
     """
 
-    def __init__(self, uri, base, login, password):
-        self._lo = None  # ldap-connection
+    def __init__(self, uri, base, login, password, certfile=None):
+        self._lo = None # ldap-connection
         self._uri = uri
         self._base = base
         self._login = login
         self._password = password
+        self._certfile = certfile
         self._connect()
         self._timeout = 0
 
     def _connect(self):
         "connect to ldap-server"
+        if self._certfile:
+            ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
+            ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, self._certfile)
         self._lo = ldap.initialize(self._uri)
         # TODO:tls
         #self._lo.set_option(ldap.OPT_X_TLS_DEMAND, False)
@@ -101,7 +106,7 @@ class LdapConnection(object):
         lo = ldap.initialize(self._uri)
         # TODO:tls
         try:
-            res_type, res_data = lo.simple_bind_s(dn, password)
+            res_type, res_data = lo.simple_bind_s(dn, password.encode("utf-8"))
             return res_type == ldap.RES_BIND
         except ldap.INVALID_CREDENTIALS:
             return False
@@ -120,23 +125,31 @@ class LdapConnection(object):
         if res_type != ldap.RES_MODIFY:
             raise ldap.LDAPError, "Wrong result type"
 
+
     @_retry_on_disconnect
     def delete(self, dn):
         "Internal: raw ldap delete function"
         res_type, res_data = self._lo.delete_s(dn)
         if res_type != ldap.RES_DELETE:
             raise ldap.LDAPError, "Wrong result type"
-
+        
+    @_retry_on_disconnect
+    def delete_r(self, dn):
+        "Internal: recursive delete function"
+        toDelete = list(self.query(base=dn,scope=ldap.SCOPE_ONELEVEL))
+        for sub in toDelete:
+            self.delete_r(sub[0])
+        self.delete(dn)
+        
     @_retry_on_disconnect_gen
-    def query(self, filter="(objectClass=*)", retrieve_attributes=None,
-                base=None, scope=ldap.SCOPE_SUBTREE):
+    def query(self, filter="(objectClass=*)", retrieve_attributes=None, base=None,
+                scope=ldap.SCOPE_SUBTREE):
         "Internal: convencience wrapper arround ldap search"
         if base == None:
             base = self._base
         result_id = self._lo.search(base, scope, filter, retrieve_attributes)
         while 1:
-            result_type, result_data = self._lo.result(
-                                        result_id, self._timeout)
+            result_type, result_data = self._lo.result(result_id, self._timeout)
             if (result_data == []):
                 break
             else:
@@ -172,7 +185,7 @@ class LdapAttribute(object):
     def __init__(self, name, value, add=False):
         self._name = unicode(name)
         self._replace_all = False
-        self._added = []
+        self._changes = []
         if add:
             self._values = []
             if type(value) == list:
@@ -202,7 +215,13 @@ class LdapAttribute(object):
         "add an attribute"
         if not value in self._values:
             self._values.append(unicode(value))
-            self._added.append((ldap.MOD_ADD, self._name, unicode(value)))
+            self._changes.append((ldap.MOD_ADD, self._name, unicode(value)))
+            
+    def remove(self, value):
+        "remove an attribute"
+        if unicode(value) in self._values:
+            self._values.remove(unicode(value))
+            self._changes.append((ldap.MOD_DELETE, self._name, unicode(value)))
 
     def __contains__(self, item):
         return self._values.__contains__(item)
@@ -234,24 +253,22 @@ class LdapAttribute(object):
         if self._replace_all:
             if len(self) == 0:
                 return [(ldap.MOD_DELETE, self._name, None)]
-            change_list = [(ldap.MOD_REPLACE, self._name, x)
-                            for x in self._values[0:1]]
-            change_list += [(ldap.MOD_ADD, self._name, x)
-                            for x in self._values[1:]]
+            change_list = [ (ldap.MOD_REPLACE, self._name, x) for x in self._values[0:1]]
+            change_list += [ (ldap.MOD_ADD, self._name, x) for x in self._values[1:] ]
             return change_list
-        return self._added
+        return self._changes
 
     def discard_change_list(self):
         "called when attribute-changes were successfully saved"
-        self._added = []
+        self._changes = []
         self._replace_all = False
 
 
 class LdapNode(object):
     """
         Holds an ldap-object represented by the dn (distinguishable name).
-        attributes are fetched from ldapserver lazily, so you can
-        create objects without network traffic.
+        attributes are fetched from ldapserver lazily, so you can create objects
+        without network traffic.
     """
 
     def __init__(self, conn, dn, new=False):
@@ -269,16 +286,13 @@ class LdapNode(object):
     def __getattr__(self, name):
         """
             get an ldap-attribute lazyly
-            * attributes starting with is_* are mapped to a check, if
-              the objectClass is present
+            * attributes starting with is_* are mapped to a check, if the objectClass is present
         """
         if self._attr == None:
             # query attributes
-            attr = list(self._conn.query(base=self._dn,
-                                         scope=ldap.SCOPE_BASE))[0][1]
+            attr = list(self._conn.query(base=self._dn, scope=ldap.SCOPE_BASE))[0][1]
             # wrap them into LdapAttribute objects
-            self._attr = dict([(x[0], LdapAttribute(x[0], x[1]))
-                               for x in attr.items()])
+            self._attr = dict([ (x[0], LdapAttribute(x[0], x[1])) for x in attr.items() ])
         if name.startswith("is_"):
             return name[3:] in self._attr[u"objectClass"]
         if name in self._attr:
@@ -293,11 +307,9 @@ class LdapNode(object):
             return object.__setattr__(self, name, value)
         if self._attr == None:
             # query attributes
-            attr = list(self._conn.query(base=self._dn,
-                                         scope=ldap.SCOPE_BASE))[0][1]
+            attr = list(self._conn.query(base=self._dn, scope=ldap.SCOPE_BASE))[0][1]
             # wrap them into LdapAttribute objects
-            self._attr = dict([(x[0], LdapAttribute(x[0], x[1]))
-                               for x in attr.items()])
+            self._attr = dict([ (x[0], LdapAttribute(x[0], x[1])) for x in attr.items()])
         if name in self._attr:
             self._attr[name].set_value(value)
         else:
@@ -306,11 +318,9 @@ class LdapNode(object):
     def __delattr__(self, name):
         if self._attr == None:
             # query attributes
-            attr = list(self._conn.query(base=self._dn,
-                                         scope=ldap.SCOPE_BASE))[0][1]
+            attr = list(self._conn.query(base=self._dn, scope=ldap.SCOPE_BASE))[0][1]
             # wrap them into LdapAttribute objects
-            self._attr = dict([(x[0], LdapAttribute(x[0], x[1]))
-                               for x in attr.items()])
+            self._attr = dict([ (x[0], LdapAttribute(x[0], x[1])) for x in attr.items() ])
         del self._attr[name]
         self._to_delete.append(name)
 
@@ -330,7 +340,8 @@ class LdapNode(object):
             return
         if self._new:
             change_list = [ (x._name.encode("utf-8"), [y.encode("utf-8") for y in x]) for x in self._attr.values() ]
-            print "ldap_add: %s" % change_list
+            if LDAPOM_VERBOSE:
+                print "ldap_add: %s" % change_list
             self._conn.add(self._dn.encode("utf-8"), change_list)
         else:
             change_list = [ (ldap.MOD_DELETE, x.encode("utf-8"), None) for x in self._to_delete ]
@@ -338,7 +349,8 @@ class LdapNode(object):
                 change_list.extend([(x, _encode_utf8(y), _encode_utf8(z)) for (x, y, z) in attr.get_change_list()])
             if len(change_list) == 0:
                 return
-            print "ldap_modify: %s" % change_list
+            if LDAPOM_VERBOSE:
+                print "ldap_modify: %s" % change_list
             self._conn.modify(self._dn.encode("utf-8"), change_list)
         self._new = False
         self._to_delete = []
@@ -357,7 +369,6 @@ class LdapNode(object):
     def set_password(self, password):
         "set password for this ldap-object immediately"
         # Issue a LDAP Password Modify Extended Operation
-        self._conn._lo.passwd_s(self._dn, None, password)
-
+        self._conn._lo.passwd_s(self._dn, None, password.encode("utf-8"))
 
 # vim: ai sw=4 expandtab
