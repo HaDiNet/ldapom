@@ -27,6 +27,15 @@ import ldap
 
 LDAPOM_VERBOSE = False
 
+def _encode_utf8(str):
+    "Force a string to be encoded as UTF-8"
+    if str == None:
+        return None
+    elif type(str) == unicode:
+        return str.encode('utf-8')
+    else:
+        return str
+
 # decorators
 def _retry_on_disconnect(func):
     "decorator to handle disconnection"
@@ -61,12 +70,6 @@ def _retry_on_disconnect_gen(func):
         # return via StopIteration-exception
 
     return new
-
-
-def _encode_utf8(str):
-    if str == None:
-        return None
-    return str.encode("utf-8")
 
 
 class LdapConnection(object):
@@ -147,7 +150,8 @@ class LdapConnection(object):
         "Internal: convencience wrapper arround ldap search"
         if base == None:
             base = self._base
-        result_id = self._lo.search(base, scope, filter, retrieve_attributes)
+        _filter = _encode_utf8(filter)
+        result_id = self._lo.search(base, scope, _filter, retrieve_attributes)
         while 1:
             result_type, result_data = self._lo.result(result_id, self._timeout)
             if (result_data == []):
