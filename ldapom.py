@@ -147,7 +147,11 @@ class LdapConnection(object):
         "Internal: convencience wrapper arround ldap search"
         if base == None:
             base = self._base
-        result_id = self._lo.search(base, scope, filter, retrieve_attributes)
+        if type(filter) == unicode:
+            _filter = filter.encode('utf-8')
+        else:
+            _filter = filter
+        result_id = self._lo.search(base, scope, _filter, retrieve_attributes)
         while 1:
             result_type, result_data = self._lo.result(result_id, self._timeout)
             if (result_data == []):
