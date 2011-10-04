@@ -109,7 +109,9 @@ class LdapConnection(object):
         lo = ldap.initialize(self._uri)
         # TODO:tls
         try:
-            res_type, res_data = lo.simple_bind_s(dn, password.encode("utf-8"))
+            _dn = _encode_utf8(dn)
+            _password = _encode_utf8(password)
+            res_type, res_data = lo.simple_bind_s(dn, password)
             return res_type == ldap.RES_BIND
         except ldap.INVALID_CREDENTIALS:
             return False
@@ -368,19 +370,19 @@ class LdapNode(object):
             # No changes yet
             return
         if self._new:
-            change_list = [ (x._name.encode("utf-8"), [y.encode("utf-8") for y in x]) for x in self._attr.values() ]
+            change_list = [ (_encode_utf8(x._name), [_encode_utf8(y) for y in x]) for x in self._attr.values() ]
             if LDAPOM_VERBOSE:
                 print "ldap_add: %s" % change_list
-            self._conn.add(self._dn.encode("utf-8"), change_list)
+            self._conn.add(_encode_utf8(self._dn), change_list)
         else:
-            change_list = [ (ldap.MOD_DELETE, x.encode("utf-8"), None) for x in self._to_delete ]
+            change_list = [ (ldap.MOD_DELETE, _encode_utf8(x), None) for x in self._to_delete ]
             for attr in self._attr.values():
-                change_list.extend([(x, _encode_utf8(y), _encode_utf8(z)) for (x, y, z) in attr.get_change_list()])
+                change_list.extend([(x, _encode_utf8(y), _encode_utf8(z)) for (x,y,z) in attr.get_change_list()])
             if len(change_list) == 0:
                 return
             if LDAPOM_VERBOSE:
                 print "ldap_modify: %s" % change_list
-            self._conn.modify(self._dn.encode("utf-8"), change_list)
+            self._conn.modify(_encode_utf8(self._dn), change_list)
         self._new = False
         self._to_delete = []
         for attr in self._attr.values():
@@ -388,12 +390,12 @@ class LdapNode(object):
 
     def delete(self):
         "delete this object in ldap"
-        self._conn.delete(self._dn.encode("utf-8"))
+        self._conn.delete(_encode_utf8(self._dn))
         self._valid = False
 
     def check_password(self, password):
         "check password for this ldap-object"
-        return self._conn.authenticate( self._dn.encode("utf-8"), password )
+        return self._conn.authenticate( _encode_utf8(self._dn), _encode_utf8(password) ) 
 
     def set_password(self, password):
         "set password for this ldap-object immediately"
