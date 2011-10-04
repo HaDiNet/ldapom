@@ -135,7 +135,7 @@ class LdapConnection(object):
         res_type, res_data = self._lo.delete_s(dn)
         if res_type != ldap.RES_DELETE:
             raise ldap.LDAPError, "Wrong result type"
-        
+
     @_retry_on_disconnect
     def delete_r(self, dn):
         "Internal: recursive delete function"
@@ -143,7 +143,7 @@ class LdapConnection(object):
         for sub in toDelete:
             self.delete_r(sub[0])
         self.delete(dn)
-        
+
     @_retry_on_disconnect_gen
     def query(self, filter="(objectClass=*)", retrieve_attributes=None, base=None,
                 scope=ldap.SCOPE_SUBTREE):
@@ -220,7 +220,7 @@ class LdapAttribute(object):
         if not value in self._values:
             self._values.append(unicode(value))
             self._changes.append((ldap.MOD_ADD, self._name, unicode(value)))
-            
+
     def remove(self, value):
         "remove an attribute"
         if unicode(value) in self._values:
@@ -368,7 +368,7 @@ class LdapNode(object):
 
     def check_password(self, password):
         "check password for this ldap-object"
-        return self._conn.authenticate( self._dn.encode("utf-8"), password ) 
+        return self._conn.authenticate( self._dn.encode("utf-8"), password )
 
     def set_password(self, password):
         "set password for this ldap-object immediately"
