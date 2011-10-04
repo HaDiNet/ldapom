@@ -174,6 +174,19 @@ class LdapConnection(object):
         "Create LdapNode-Object linked to this connection"
         return LdapNode(self, dn)
 
+    def retrieve_ldap_node(self, dn):
+        """Retrieves the object from that database and wraps it as an LdapNode.
+
+        This is the same as get_ldap_node, except that all attributes
+        for this node will be obtained from that database immediately
+        instead of lazily.
+
+        It will raise ldap.NO_SUCH_OBJECT if the entry cannot be found.
+        """
+        node = LdapNode(self, dn)
+        node.retrieve_attributes()
+        return node
+
     def new_ldap_node(self, dn):
         "Create new LdapNode-Object linked to this connection"
         return LdapNode(self, dn, new=True)
@@ -287,16 +300,22 @@ class LdapNode(object):
         else:
             self._attr = None
 
+    def retrieve_attributes(self):
+        """Retrieves the node's attributes from the database.
+
+        Attributes are usually loaded lazily (the first time they're accessed),
+        but you can use this method to force this to happen now.
+        """
+        attr = list(self._conn.query(base=self._dn, scope=ldap.SCOPE_BASE))[0][1]
+        self._attr = dict([ (x[0], LdapAttribute(x[0], x[1])) for x in attr.items() ])
+
     def __getattr__(self, name):
         """
-            get an ldap-attribute lazyly
+            get an ldap-attribute
             * attributes starting with is_* are mapped to a check, if the objectClass is present
         """
         if self._attr == None:
-            # query attributes
-            attr = list(self._conn.query(base=self._dn, scope=ldap.SCOPE_BASE))[0][1]
-            # wrap them into LdapAttribute objects
-            self._attr = dict([ (x[0], LdapAttribute(x[0], x[1])) for x in attr.items() ])
+            self.retrieve_attributes()
         if name.startswith("is_"):
             return name[3:] in self._attr[u"objectClass"]
         if name in self._attr:
@@ -310,10 +329,7 @@ class LdapNode(object):
         if name.startswith("_"):
             return object.__setattr__(self, name, value)
         if self._attr == None:
-            # query attributes
-            attr = list(self._conn.query(base=self._dn, scope=ldap.SCOPE_BASE))[0][1]
-            # wrap them into LdapAttribute objects
-            self._attr = dict([ (x[0], LdapAttribute(x[0], x[1])) for x in attr.items()])
+            self.retrieve_attributes()
         if name in self._attr:
             self._attr[name].set_value(value)
         else:
@@ -321,10 +337,7 @@ class LdapNode(object):
 
     def __delattr__(self, name):
         if self._attr == None:
-            # query attributes
-            attr = list(self._conn.query(base=self._dn, scope=ldap.SCOPE_BASE))[0][1]
-            # wrap them into LdapAttribute objects
-            self._attr = dict([ (x[0], LdapAttribute(x[0], x[1])) for x in attr.items() ])
+            self.retrieve_attributes()
         del self._attr[name]
         self._to_delete.append(name)
 
