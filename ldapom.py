@@ -326,8 +326,7 @@ class LdapNode(object):
             return name[3:] in self._attr[u"objectClass"]
         if name in self._attr:
             return self._attr[name]
-        else:
-            raise AttributeError
+        raise AttributeError('Cannot find attribute %s' % name)
 
     def __setattr__(self, name, value):
         "set ldap attribute"
