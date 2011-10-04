@@ -160,6 +160,13 @@ class LdapConnection(object):
                 if result_type == ldap.RES_SEARCH_ENTRY:
                     yield result_data[0]
 
+    def search(self, *args, **kwargs):
+        """Like query(), but wraps each object as an LdapNode."""
+        for dn, attributes_dict in self.query(*args, **kwargs):
+            node = LdapNode(self, dn)
+            node._load_attributes(attributes_dict)
+            yield node
+
     def check_if_dn_exists(self, dn):
         "search ldap-server for dn and return a boolean"
         try:
