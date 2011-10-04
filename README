@@ -37,3 +37,7 @@ Create a new ldap node:
     >>> node2.objectClass = ['class1', 'class2']
     >>> node2.givenName = 'new'
     >>> node2.save()
+
+Howto use TLS:
+
+    >>> lc = ldapom.LdapConnection(uri='ldaps://your.server.com', base='dc=example,dc=com', login='cn=admin,dc=example,dc=com', password='admin', cert='/path/to/cert')

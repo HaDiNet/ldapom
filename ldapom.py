@@ -100,7 +100,6 @@ class LdapConnection(object):
             ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
             ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, self._certfile)
         self._lo = ldap.initialize(self._uri)
-        # TODO:tls
         #self._lo.set_option(ldap.OPT_X_TLS_DEMAND, False)
         self._lo.simple_bind_s(self._login, self._password)
 
