@@ -306,8 +306,14 @@ class LdapNode(object):
         Attributes are usually loaded lazily (the first time they're accessed),
         but you can use this method to force this to happen now.
         """
-        attr = list(self._conn.query(base=self._dn, scope=ldap.SCOPE_BASE))[0][1]
-        self._attr = dict([ (x[0], LdapAttribute(x[0], x[1])) for x in attr.items() ])
+        _dn, attributes_dict = list(self._conn.query(base=self._dn, scope=ldap.SCOPE_BASE))[0]
+        self._load_attributes(attributes_dict)
+
+    def _load_attributes(self, attributes_dict):
+        self._attr = dict([
+            (attr_name, LdapAttribute(attr_name, attr_values))
+                for attr_name, attr_values in attributes_dict.items()
+        ])
 
     def __getattr__(self, name):
         """
