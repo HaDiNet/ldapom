@@ -133,6 +133,14 @@ class LdapConnection(object):
 
 
     @_retry_on_disconnect
+    def rename(self, dn, newrdn):
+        "Internal: raw ldap rename function"
+        res_type, res_data = self._lo.rename_s(dn, newrdn, delold=1)
+        if res_type != ldap.RES_MODRDN:
+            raise ldap.LDAPError, "Wrong result type"
+
+
+    @_retry_on_disconnect
     def delete(self, dn):
         "Internal: raw ldap delete function"
         res_type, res_data = self._lo.delete_s(dn)
