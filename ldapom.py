@@ -104,6 +104,7 @@ class LdapConnection(object):
         #self._lo.set_option(ldap.OPT_X_TLS_DEMAND, False)
         self._lo.simple_bind_s(self._login, self._password)
 
+    @_retry_on_disconnect
     def authenticate(self, dn, password):
         "Internal: try to authenticate on a seperate connection"
         lo = ldap.initialize(self._uri)
@@ -162,6 +163,14 @@ class LdapConnection(object):
                 if result_type == ldap.RES_SEARCH_ENTRY:
                     yield result_data[0]
 
+    @_retry_on_disconnect
+    def set_password(self, dn, password):
+        "Internal: change password"
+        _dn = _encode_utf8(dn)
+        _password = _encode_utf8(password)
+        # Issue a LDAP Password Modify Extended Operation
+        self._lo.passwd_s(_dn, None, _password)
+        
     def search(self, *args, **kwargs):
         """Like query(), but wraps each object as an LdapNode."""
         for dn, attributes_dict in self.query(*args, **kwargs):
@@ -400,6 +409,6 @@ class LdapNode(object):
     def set_password(self, password):
         "set password for this ldap-object immediately"
         # Issue a LDAP Password Modify Extended Operation
-        self._conn._lo.passwd_s(self._dn, None, password.encode("utf-8"))
+        self._conn.set_password(_encode_utf8(self._dn), _encode_utf8(password))
 
 # vim: ai sw=4 expandtab
