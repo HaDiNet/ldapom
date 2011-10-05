@@ -12,7 +12,7 @@ def read(fname):
 
 
 setup(name='ldapom',
-      version='0.9',
+      version='0.9.1',
       description='A simple ldap object mapper for python',
       author='Florian Richter',
       author_email='mail@f1ori.de',
