@@ -28,7 +28,9 @@ import ldap
 LDAPOM_VERBOSE = False
 
 def _encode_utf8(str):
-    "Force a string to be encoded as UTF-8"
+    """
+    Force a string to be encoded as UTF-8
+    """
     if str == None:
         return None
     elif type(str) == unicode:
@@ -84,18 +86,40 @@ class LdapConnection(object):
         * getLdapNode
     """
 
+    ## @param uri URI indicating the LDAP instance we should connect to
+    ## @param base The Base of the LDAP we are working in
+    ## @param login The dn we are authenticating with
+    ## @param password The password for the login dn
+    ## @param certfile If using SSL/TLS this is certificate of the server
     def __init__(self, uri, base, login, password, certfile=None):
-        self._lo = None # ldap-connection
+        """
+        Create a new LdapConnection.
+
+        This already connects to the LDAP server. There is no lazy loading.
+        """
+
+        ## native python-ldap connection instance
+        self._lo = None
+        ## URI indicating the LDAP instance we should connect to
         self._uri = uri
+        ## The Base of the LDAP we are working in
         self._base = base
+        ## The dn we are authenticating with
         self._login = login
+        ## The password for the login dn
         self._password = password
+        ## If using SSL/TLS this is certificate of the server
         self._certfile = certfile
+        # After storing all information, we connect to the server
         self._connect()
+        ## Defines how long we will wait for result answers from the LDAP server
         self._timeout = 0
 
+    ## @return None
     def _connect(self):
-        "connect to ldap-server"
+        """
+        Connect to ldap-server
+        """
         if self._certfile:
             ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
             ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, self._certfile)
@@ -104,8 +128,14 @@ class LdapConnection(object):
         self._lo.simple_bind_s(self._login, self._password)
 
     @_retry_on_disconnect
+    ## @param dn The dn to authenticate with
+    ## @param password The password for the login dn
+    ## @return boolean
     def authenticate(self, dn, password):
-        "Internal: try to authenticate on a seperate connection"
+        """
+        Try to authenticate on a seperate connection to check the (dn, password)
+        combination.
+        """
         lo = ldap.initialize(self._uri)
         # TODO:tls
         try:
@@ -117,47 +147,77 @@ class LdapConnection(object):
             return False
 
     @_retry_on_disconnect
+    ## @param dn The new/modified dn
+    ## @param attrs The added attributes
+    ## @return None
     def add(self, dn, attrs):
-        "Internal: raw ldap add function"
+        """
+        raw ldap add function
+        """
         res_type, res_data = self._lo.add_s(dn, attrs)
         if res_type != ldap.RES_ADD:
             raise ldap.LDAPError, "Wrong result type"
 
     @_retry_on_disconnect
+    ## @param dn The modified dn
+    ## @param change The changed attributes
+    ## @return None
     def modify(self, dn, change):
-        "Internal: raw ldap modify function"
+        """
+        raw ldap modify function
+        """
         res_type, res_data = self._lo.modify_s(dn, change)
         if res_type != ldap.RES_MODIFY:
             raise ldap.LDAPError, "Wrong result type"
 
 
     @_retry_on_disconnect
+    ## @param dn The old DN
+    ## @param newrdn The new DN
+    ## @return None
     def rename(self, dn, newrdn):
-        "Internal: raw ldap rename function"
+        """
+        raw ldap rename function
+        """
         res_type, res_data = self._lo.rename_s(dn, newrdn, delold=1)
         if res_type != ldap.RES_MODRDN:
             raise ldap.LDAPError, "Wrong result type"
 
 
     @_retry_on_disconnect
+    ## @param dn The DN of the LDAP node that should be deleted
+    ## @return None
     def delete(self, dn):
-        "Internal: raw ldap delete function"
+        """
+        raw ldap delete function
+        """
         res_type, res_data = self._lo.delete_s(dn)
         if res_type != ldap.RES_DELETE:
             raise ldap.LDAPError, "Wrong result type"
 
     @_retry_on_disconnect
+    ## @param dn The DN of the LDAP node that should be deleted
+    ## @return None
     def delete_r(self, dn):
-        "Internal: recursive delete function"
+        """
+        recursive delete function
+        """
         toDelete = list(self.query(base=dn,scope=ldap.SCOPE_ONELEVEL))
         for sub in toDelete:
             self.delete_r(sub[0])
         self.delete(dn)
 
     @_retry_on_disconnect_gen
+    ## @param filter The LDAP query send to the server
+    ## @param retrieve_attributes The list of attributes that should be fetched. If None, all are fetched.
+    ## @param base The base dn from where the search starts in the LDAP tree
+    ## @param scope The search scope in the LDAP tree
+    ## @return string[]
     def query(self, filter="(objectClass=*)", retrieve_attributes=None, base=None,
                 scope=ldap.SCOPE_SUBTREE):
-        "Internal: convencience wrapper arround ldap search"
+        """
+        convencience wrapper arround ldap search
+        """
         if base == None:
             base = self._base
         _filter = _encode_utf8(filter)
@@ -171,22 +231,38 @@ class LdapConnection(object):
                     yield result_data[0]
 
     @_retry_on_disconnect
+    ## @param dn The DN of which the password should be changed
+    ## @param password The new password
+    ## @return None
     def set_password(self, dn, password):
-        "Internal: change password"
+        """
+        Change the password of a user.
+        
+        This issues a LDAP Password Modify Extended Operation.
+        """
         _dn = _encode_utf8(dn)
         _password = _encode_utf8(password)
         # Issue a LDAP Password Modify Extended Operation
         self._lo.passwd_s(_dn, None, _password)
-        
+
+    ## @param args The arguments supplied which will be passed thru to query()
+    ## @param kwargs The keyword arguments supplied which will be passed thru to query()
+    ## @return LdapNode[]
     def search(self, *args, **kwargs):
-        """Like query(), but wraps each object as an LdapNode."""
+        """
+        Like query(), but wraps each object as an LdapNode.
+        """
         for dn, attributes_dict in self.query(*args, **kwargs):
             node = LdapNode(self, dn)
             node._load_attributes(attributes_dict)
             yield node
 
+    ## @param dn The DN for which existence should be checked
+    ## @return boolean
     def check_if_dn_exists(self, dn):
-        "search ldap-server for dn and return a boolean"
+        """
+        Search ldap-server for dn and return a boolean
+        """
         try:
             res = self.query(base=dn, scope=ldap.SCOPE_BASE)
             if len(list(res)) != 0:
@@ -195,12 +271,19 @@ class LdapConnection(object):
             return False
         return False
 
+    ## @param dn The DN of the LDAP node which we would like to have mapped into a LdapNode
+    ## @return LdapNode
     def get_ldap_node(self, dn):
-        "Create LdapNode-Object linked to this connection"
+        """
+        Create LdapNode-Object linked to this connection
+        """
         return LdapNode(self, dn)
 
+    ## @param dn The DN of the LDAP node which we would like to have mapped into a LdapNode
+    ## @return LdapNode
     def retrieve_ldap_node(self, dn):
-        """Retrieves the object from that database and wraps it as an LdapNode.
+        """
+        Retrieves the object from that database and wraps it as an LdapNode.
 
         This is the same as get_ldap_node, except that all attributes
         for this node will be obtained from that database immediately
@@ -212,8 +295,12 @@ class LdapConnection(object):
         node.retrieve_attributes()
         return node
 
+    ## @param dn The DN of the newly created LdapNode
+    ## @return LdapNode
     def new_ldap_node(self, dn):
-        "Create new LdapNode-Object linked to this connection"
+        """
+        Create new LdapNode-Object linked to this connection
+        """
         return LdapNode(self, dn, new=True)
 
 
