@@ -262,6 +262,11 @@ class LdapConnection(object):
     def check_if_dn_exists(self, dn):
         """
         Search ldap-server for dn and return a boolean
+
+        >>> ldap_connection.check_if_dn_exists('cn=jack,dc=example,dc=com')
+        True
+        >>> ldap_connection.check_if_dn_exists('cn=foobar,dc=example,dc=com')
+        False
         """
         try:
             res = self.query(base=dn, scope=ldap.SCOPE_BASE)
@@ -275,7 +280,15 @@ class LdapConnection(object):
     ## @return LdapNode
     def get_ldap_node(self, dn):
         """
-        Create LdapNode-Object linked to this connection
+        Create lazy LdapNode-Object linked to this connection
+
+        >>> ldap_connection.get_ldap_node('cn=jack,dc=example,dc=com')
+        <LdapNode: cn=jack,dc=example,dc=com>
+        >>> ldap_connection.get_ldap_node('cn=nobody,dc=example,dc=com') # this won't check, if node exists
+        <LdapNode: cn=nobody,dc=example,dc=com>
+        >>> _.cn
+        Traceback (most recent call last):
+        NO_SUCH_OBJECT: {'desc': 'No such object'}
         """
         return LdapNode(self, dn)
 
@@ -290,6 +303,12 @@ class LdapConnection(object):
         instead of lazily.
 
         It will raise ldap.NO_SUCH_OBJECT if the entry cannot be found.
+
+        >>> ldap_connection.retrieve_ldap_node('cn=jack,dc=example,dc=com')
+        <LdapNode: cn=jack,dc=example,dc=com>
+        >>> ldap_connection.retrieve_ldap_node('cn=nobody,dc=example,dc=com')
+        Traceback (most recent call last):
+        NO_SUCH_OBJECT: {'desc': 'No such object'}
         """
         node = LdapNode(self, dn)
         node.retrieve_attributes()
@@ -300,6 +319,17 @@ class LdapConnection(object):
     def new_ldap_node(self, dn):
         """
         Create new LdapNode-Object linked to this connection
+
+        >>> node = ldap_connection.new_ldap_node('cn=newuser,dc=example,dc=com')
+        >>> node.objectClass = ['person']
+        >>> node.sn = 'Daniel'
+        >>> node.cn = 'newuser'
+        >>> node.save() # the object is created not until here!
+        >>> node = ldap_connection.get_ldap_node('cn=newuser,dc=example,dc=com')
+        >>> unicode(node.sn)
+        u'Daniel'
+        >>> unicode(node.cn)
+        u'newuser'
         """
         return LdapNode(self, dn, new=True)
 
@@ -492,16 +522,38 @@ class LdapNode(object):
             attr.discard_change_list()
 
     def delete(self):
-        "delete this object in ldap"
+        """
+        delete this object in ldap
+
+        >>> ldap_connection.check_if_dn_exists('cn=jack,dc=example,dc=com')
+        True
+        >>> node = ldap_connection.get_ldap_node('cn=jack,dc=example,dc=com')
+        >>> node.delete()
+        >>> ldap_connection.check_if_dn_exists('cn=jack,dc=example,dc=com')
+        False
+        """
         self._conn.delete(_encode_utf8(self._dn))
         self._valid = False
 
     def check_password(self, password):
-        "check password for this ldap-object"
+        """
+        check password for this ldap-object
+
+        >>> jack_node.check_password('jack')
+        True
+        >>> jack_node.check_password('wrong_pw')
+        False
+        """
         return self._conn.authenticate( _encode_utf8(self._dn), _encode_utf8(password) ) 
 
     def set_password(self, password):
-        "set password for this ldap-object immediately"
+        """
+        set password for this ldap-object immediately
+
+        >>> jack_node.set_password('asdfä')
+        >>> jack_node.check_password('asdfä')
+        True
+        """
         # Issue a LDAP Password Modify Extended Operation
         self._conn.set_password(_encode_utf8(self._dn), _encode_utf8(password))
 
