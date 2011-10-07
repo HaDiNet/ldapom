@@ -3,10 +3,12 @@ LDAP object mapper
 
 This python module provides a simple LDAP object mapper
 
+
 License
 -------
 
 MIT, so do what you want, but leave the copyright notice in the code
+
 
 Github
 ---------
@@ -15,29 +17,45 @@ Fork it!
 
 https://github.com/f1ori/ldapom
 
+
 Usage
 -----
 
 Playing around:
 
     >>> import ldapom
-    >>> lc = ldapom.LdapConnection(uri='ldap://localhost:1389', base='dc=example,dc=com', login='cn=admin,dc=example,dc=com', password='admin')
-    >>> node = lc.get_ldap_node('cn=f1ori,ou=people,dc=example,dc=com')
+    >>> lc = ldapom.LdapConnection(uri='ldap://localhost:1381', base='dc=example,dc=com', login='cn=admin,dc=example,dc=com', password='admin')
+    >>> node = lc.get_ldap_node('cn=jack,dc=example,dc=com')
     >>> node # just show
-    <LdapNode: cn=f1ori,ou=people,dc=example,dc=com>
-    >>> node.givenName # show name
-    <LdapAttribute: givenName=Richter>
-    >>> node.givenName = 'Meier' # change givenname
+    <LdapNode: cn=jack,dc=example,dc=com>
+    >>> node.sn # show surname
+    <LdapAttribute: sn=O'Niel>
+    >>> node.sn = 'Meier' # change givenname
     >>> node.save() # save all changes
     >>> node.delete() # delete
 
 Create a new ldap node:
 
-    >>> node2 = lc.new_ldap_node('cn=newuser,ou=people,dc=example,dc=com')
-    >>> node2.objectClass = ['class1', 'class2']
-    >>> node2.givenName = 'new'
+    >>> node2 = lc.new_ldap_node('cn=newuser,dc=example,dc=com')
+    >>> node2.objectClass = ['person']
+    >>> node2.cn = 'newuser'
+    >>> node2.sn = 'newuser'
     >>> node2.save()
+
+Search for attributes:
+
+    >>> result = lc.search('objectClass=posixAccount')
+    >>> list(result)
+    [<LdapNode: cn=daniel,dc=example,dc=com>, <LdapNode: cn=sam,dc=example,dc=com>]
 
 Howto use TLS:
 
-    >>> lc = ldapom.LdapConnection(uri='ldaps://your.server.com', base='dc=example,dc=com', login='cn=admin,dc=example,dc=com', password='admin', cert='/path/to/cert')
+    >>> lc = ldapom.LdapConnection(uri='ldaps://your.server.com', base='dc=example,dc=com', login='cn=admin,dc=example,dc=com', password='admin', cert='/path/to/cert') # doctest: +SKIP
+
+
+Testing
+-------
+
+Make sure, openldap is installed then run
+
+python2 tests.py
