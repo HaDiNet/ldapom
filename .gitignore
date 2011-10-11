@@ -9,3 +9,6 @@ doxygen.log
 doxygen/
 openldap/ldapdata
 ldapom.egg-info/
+htmlcov/
+.coverage
+coverage.xml
