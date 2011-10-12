@@ -504,7 +504,7 @@ class LdapNode(object):
             return
         if self._new:
             change_list = [ (_encode_utf8(x._name), [_encode_utf8(y) for y in x]) for x in self._attr.values() ]
-            if LDAPOM_VERBOSE:
+            if LDAPOM_VERBOSE:  # pragma: no cover
                 print "ldap_add: %s" % change_list
             self._conn.add(_encode_utf8(self._dn), change_list)
         else:
@@ -513,7 +513,7 @@ class LdapNode(object):
                 change_list.extend([(x, _encode_utf8(y), _encode_utf8(z)) for (x,y,z) in attr.get_change_list()])
             if len(change_list) == 0:
                 return
-            if LDAPOM_VERBOSE:
+            if LDAPOM_VERBOSE:  # pragma: no cover
                 print "ldap_modify: %s" % change_list
             self._conn.modify(_encode_utf8(self._dn), change_list)
         self._new = False

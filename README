@@ -56,6 +56,9 @@ Howto use TLS:
 Testing
 -------
 
+To install development dependencies use
+    pip install -r dev-requirements.txt
+
 Make sure, openldap is installed then run
 
 python2 tests.py

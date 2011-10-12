@@ -1,7 +1,7 @@
+# -*- coding: utf-8 -*-
+
 from paver.easy import task, sh, needs, path
 from paver.setuputils import setup
-import os
-
 
 setup(name='ldapom',
       version='0.9.1',
@@ -18,3 +18,12 @@ setup(name='ldapom',
 @task
 def docs(options):
     sh('doxygen')
+
+@task
+def test(options):
+    sh('python tests.py')
+
+@task
+def coverage(options):
+    sh('coverage run --source ldapom.py ./tests.py')
+    sh('coverage xml')
