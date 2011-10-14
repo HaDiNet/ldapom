@@ -1,1 +1,2 @@
 coverage
+Paver>=1.0.0
