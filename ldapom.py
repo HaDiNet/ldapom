@@ -216,7 +216,7 @@ class LdapConnection(object):
     def query(self, filter="(objectClass=*)", retrieve_attributes=None, base=None,
                 scope=ldap.SCOPE_SUBTREE):
         """
-        convencience wrapper arround ldap search
+        Convencience wrapper arround python-ldap internal search
         """
         if base == None:
             base = self._base
