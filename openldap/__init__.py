@@ -22,16 +22,21 @@ def get_url_path(path=get_real_path()):
     """
     return path.replace('/', '%2F')
 
+def get_default_config_file():
+    """
+    Get the absolute path to the default slapd.conf
+    """
+    return os.path.join(get_real_path(), 'slapd.conf')
 
 class LdapServer(object):
     """
     Manager for OpenLDAP testing server
     """
-    def __init__(self, port=1381, tls_port=1382, config_file='slapd.conf', path=get_real_path()):
+    def __init__(self, port=1381, tls_port=1382, config_file=get_default_config_file(), path=get_real_path()):
         self.server = None
         self.port = port
         self.tls_port = tls_port
-        self.config_file = config_file
+        self.config_file = os.path.realpath(config_file)
         self.path = path
 
     def __del__(self):
@@ -46,23 +51,26 @@ class LdapServer(object):
         """
         check_call(['rm', '-rf', '%s/ldapdata' % self.path])
         check_call(['mkdir', '-p', '%s/ldapdata' % self.path])
-        check_call(['ldapadd', '-H', 'ldap://localhost:%d' % self.port, '-D', 'cn=admin,dc=example,dc=com', '-w', 'admin', '-x'],
-             stdin = open('%s/%s' % (self.path, ldif_file), "r"),
-             stdout = open("/dev/null", "w"),
-            )
-        
+        check_call(['slapadd', '-l', os.path.join(self.path, ldif_file), '-f', self.config_file, '-d', '0'],
+                stdout = open("/dev/null", "w"), cwd = self.path)
+
+    def ldapi_url(self):
+        """
+        The ldapi://-URL this LDAP server uses
+        """
+        return 'ldapi://{0}%2Fldapi'.format(get_url_path(self.path))
+
     def start(self, clean=True):
         """
         start ldap server
         """
-        conn_str = 'ldapi://%s%%2Fldapi ldap://127.0.0.1:1381' % get_url_path(self.path)
-        self.server = Popen(['slapd', '-f', self.config_file, '-h', conn_str],
+        if clean:
+            self.load_data()
+        self.server = Popen(['slapd', '-f', self.config_file, '-h', self.ldapi_url()],
              cwd = self.path,
              stdout = subprocess.PIPE,
              )
         self.server.stdout.read() # read until end -> slapd went to background
-        if clean:
-            self.load_data()
 
     def stop(self):
         """
@@ -71,7 +79,7 @@ class LdapServer(object):
         if self.server:
             self.server.terminate()
         self.server = None
-    
+
     def restart(self):
         """
         restart ldapserver without clearing the server
