@@ -24,7 +24,7 @@ Usage
 Playing around:
 
     >>> import ldapom
-    >>> lc = ldapom.LdapConnection(uri='ldap://localhost:1381', base='dc=example,dc=com', login='cn=admin,dc=example,dc=com', password='admin')
+    >>> lc = ldapom.LdapConnection(uri='ldap://localhost:1381', base='dc=example,dc=com', login='cn=admin,dc=example,dc=com', password='admin') # doctest: +SKIP
     >>> node = lc.get_ldap_node('cn=jack,dc=example,dc=com')
     >>> node # just show
     <LdapNode: cn=jack,dc=example,dc=com>
