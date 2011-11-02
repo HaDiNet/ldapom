@@ -141,8 +141,8 @@ class LdapConnection(object):
         try:
             _dn = _encode_utf8(dn)
             _password = _encode_utf8(password)
-            res_type, res_data = lo.simple_bind_s(dn, password)
-            return res_type == ldap.RES_BIND
+            lo.simple_bind_s(dn, password)
+            return True
         except ldap.INVALID_CREDENTIALS:
             return False
 
@@ -154,9 +154,7 @@ class LdapConnection(object):
         """
         raw ldap add function
         """
-        res_type, res_data = self._lo.add_s(dn, attrs)
-        if res_type != ldap.RES_ADD:
-            raise ldap.LDAPError, "Wrong result type"
+        self._lo.add_s(dn, attrs)
 
     @_retry_on_disconnect
     ## @param dn The modified dn
@@ -166,9 +164,7 @@ class LdapConnection(object):
         """
         raw ldap modify function
         """
-        res_type, res_data = self._lo.modify_s(dn, change)
-        if res_type != ldap.RES_MODIFY:
-            raise ldap.LDAPError, "Wrong result type"
+        self._lo.modify_s(dn, change)
 
 
     @_retry_on_disconnect
@@ -179,9 +175,7 @@ class LdapConnection(object):
         """
         raw ldap rename function
         """
-        res_type, res_data = self._lo.rename_s(dn, newrdn, delold=1)
-        if res_type != ldap.RES_MODRDN:
-            raise ldap.LDAPError, "Wrong result type"
+        self._lo.rename_s(dn, newrdn, delold=1)
 
 
     @_retry_on_disconnect
@@ -191,9 +185,7 @@ class LdapConnection(object):
         """
         raw ldap delete function
         """
-        res_type, res_data = self._lo.delete_s(dn)
-        if res_type != ldap.RES_DELETE:
-            raise ldap.LDAPError, "Wrong result type"
+        self._lo.delete_s(dn)
 
     @_retry_on_disconnect
     ## @param dn The DN of the LDAP node that should be deleted
@@ -237,7 +229,7 @@ class LdapConnection(object):
     def set_password(self, dn, password):
         """
         Change the password of a user.
-        
+
         This issues a LDAP Password Modify Extended Operation.
         """
         _dn = _encode_utf8(dn)
@@ -544,7 +536,7 @@ class LdapNode(object):
         >>> jack_node.check_password('wrong_pw')
         False
         """
-        return self._conn.authenticate( _encode_utf8(self._dn), _encode_utf8(password) ) 
+        return self._conn.authenticate( _encode_utf8(self._dn), _encode_utf8(password) )
 
     def set_password(self, password):
         """
