@@ -1,2 +1,3 @@
 coverage
 Paver>=1.0.0
+unittest2
