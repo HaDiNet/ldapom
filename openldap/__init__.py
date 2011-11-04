@@ -64,12 +64,9 @@ class LdapServer(object):
         """
         if clean:
             self.load_data()
-        self.server = Popen(['slapd', '-f', self.config_file, '-h', self.ldapi_url()],
+        self.server = Popen(['slapd', '-f', self.config_file, '-h', self.ldapi_url(), '-d', '0'],
              cwd = self.path,
-             stdout = subprocess.PIPE,
-             stderr = subprocess.PIPE,
              )
-        self.server.stdout.read() # read until end -> slapd went to background
         # Busy wait until LDAP is ready
         tries = 0
         while tries < 100:
