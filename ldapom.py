@@ -91,7 +91,8 @@ class LdapConnection(object):
     ## @param login The dn we are authenticating with
     ## @param password The password for the login dn
     ## @param certfile If using SSL/TLS this is certificate of the server
-    def __init__(self, uri, base, login, password, certfile=None):
+    ## @param timelimit Set the timelimit a search request may take
+    def __init__(self, uri, base, login, password, certfile=None, timelimit=30):
         """
         Create a new LdapConnection.
 
@@ -114,6 +115,8 @@ class LdapConnection(object):
         self._connect()
         ## Defines how long we will wait for result answers from the LDAP server
         self._timeout = 0
+        ## Set timelimit, python-ldap defaults to 30
+        ldap.set_option(ldap.OPT_TIMELIMIT, timelimit)
 
     ## @return None
     def _connect(self):
