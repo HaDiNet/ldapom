@@ -423,9 +423,9 @@ class LdapAttribute(object):
         set single value, discard all existing ones
         """
         if type(value) == list:
-            self._values = [str(x) for x in value]
+            self._values = [unicode(x) for x in value]
         else:
-            self._values = [str(value)]
+            self._values = [unicode(value)]
         self._replace_all = True
 
     ## @return Array
@@ -462,7 +462,7 @@ class LdapNode(object):
         Create lazy Node Object from dn
         """
         self._conn = conn
-        self._dn = str(dn)
+        self._dn = unicode(dn)
         self._valid = True
         self._to_delete = []
         self._new = new
@@ -485,7 +485,7 @@ class LdapNode(object):
     def _load_attributes(self, attributes_dict):
         self._attr = dict([
             (attr_name, LdapAttribute(attr_name, attr_values))
-                for attr_name, attr_values in list(attributes_dict.items())
+                for attr_name, attr_values in attributes_dict.items()
         ])
 
     def __getattr__(self, name):
@@ -496,7 +496,7 @@ class LdapNode(object):
         if self._attr == None:
             self.retrieve_attributes()
         if name.startswith("is_"):
-            return name[3:] in self._attr["objectClass"]
+            return name[3:] in self._attr[u'objectClass']
         if name in self._attr:
             return self._attr[name]
         raise AttributeError('Cannot find attribute %s' % name)
@@ -537,22 +537,22 @@ class LdapNode(object):
             # No changes yet
             return
         if self._new:
-            change_list = [ (_encode_utf8(x._name), [_encode_utf8(y) for y in x]) for x in list(self._attr.values()) ]
+            change_list = [ (_encode_utf8(x._name), [_encode_utf8(y) for y in x]) for x in self._attr.values() ]
             if LDAPOM_VERBOSE:  # pragma: no cover
-                print(("ldap_add: %s" % change_list))
+                print(("ldap_add: {0}".format(change_list)))
             self._conn.add(_encode_utf8(self._dn), change_list)
         else:
             change_list = [ (ldap.MOD_DELETE, _encode_utf8(x), None) for x in self._to_delete ]
-            for attr in list(self._attr.values()):
+            for attr in self._attr.values():
                 change_list.extend([(x, _encode_utf8(y), _encode_utf8(z)) for (x,y,z) in attr.get_change_list()])
             if len(change_list) == 0:
                 return
             if LDAPOM_VERBOSE:  # pragma: no cover
-                print(("ldap_modify: %s" % change_list))
+                print(("ldap_modify: {0}".format(change_list)))
             self._conn.modify(_encode_utf8(self._dn), change_list)
         self._new = False
         self._to_delete = []
-        for attr in list(self._attr.values()):
+        for attr in self._attr.values():
             attr.discard_change_list()
 
     ## @return None
