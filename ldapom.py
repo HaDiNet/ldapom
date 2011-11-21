@@ -353,33 +353,55 @@ class LdapAttribute(object):
             else:
                 self._values = [unicode(value)]
 
+    ## @return Integer
     def __len__(self):
+        """
+        The number of values set for this attribute
+        """
         return len(self._values)
 
+    ## @return String
     def __unicode__(self):
-        "if there's only one item, return it directly"
+        """
+        unicode value of this attribute
+        """
+        # if there's only one item, return it directly
         if len(self._values) == 1:
             return self._values[0]
         return unicode(self._values)
 
+    ## @return String
     def __repr__(self):
+        """
+        literal representation
+        """
         return "<LdapAttribute: %s=%s>" % (self._name, self.__unicode__())
 
+    ## @param value String the additional value
+    ## @return None
     def append(self, value):
-        "add an attribute"
+        """
+        add an attribute
+        """
         if not value in self._values:
             self._values.append(unicode(value))
             self._changes.append((ldap.MOD_ADD, self._name, unicode(value)))
 
+    ## @param value String the to-be-removed value
+    ## @return None
     def remove(self, value):
-        "remove an attribute"
-        if unicode(value) in self._values:
+        """
+        remove an attribute
+        """
+        if str(value) in self._values:
             self._values.remove(unicode(value))
             self._changes.append((ldap.MOD_DELETE, self._name, unicode(value)))
 
+    ## @return Boolean
     def __contains__(self, item):
         return self._values.__contains__(item)
 
+    ## @return String
     def __getitem__(self, key):
         return self._values[key]
 
@@ -391,19 +413,26 @@ class LdapAttribute(object):
         self._replace_all = True
         self._values.remove(key)
 
+    ## @return Iterator
     def __iter__(self):
         return self._values.__iter__()
 
+    ## @return None
     def set_value(self, value):
-        "set single value, discard all existing ones"
+        """
+        set single value, discard all existing ones
+        """
         if type(value) == list:
             self._values = [unicode(x) for x in value]
         else:
             self._values = [unicode(value)]
         self._replace_all = True
 
+    ## @return Array
     def get_change_list(self):
-        "get all changes to this attribute in ldap_modify-syntax"
+        """
+        get all changes to this attribute in ldap_modify-syntax
+        """
         if self._replace_all:
             if len(self) == 0:
                 return [(ldap.MOD_DELETE, self._name, None)]
@@ -412,21 +441,26 @@ class LdapAttribute(object):
             return change_list
         return self._changes
 
+    ## @return None
     def discard_change_list(self):
-        "called when attribute-changes were successfully saved"
+        """
+        called when attribute-changes were successfully saved
+        """
         self._changes = []
         self._replace_all = False
 
 
 class LdapNode(object):
     """
-        Holds an ldap-object represented by the dn (distinguishable name).
-        attributes are fetched from ldapserver lazily, so you can create objects
-        without network traffic.
+    Holds an ldap-object represented by the dn (distinguishable name).
+    attributes are fetched from ldapserver lazily, so you can create objects
+    without network traffic.
     """
 
     def __init__(self, conn, dn, new=False):
-        "Create lazy Node Object from dn"
+        """
+        Create lazy Node Object from dn
+        """
         self._conn = conn
         self._dn = unicode(dn)
         self._valid = True
@@ -437,6 +471,7 @@ class LdapNode(object):
         else:
             self._attr = None
 
+    ## @return None
     def retrieve_attributes(self):
         """Retrieves the node's attributes from the database.
 
@@ -446,6 +481,7 @@ class LdapNode(object):
         _dn, attributes_dict = list(self._conn.query(base=self._dn, scope=ldap.SCOPE_BASE))[0]
         self._load_attributes(attributes_dict)
 
+    ## @return None
     def _load_attributes(self, attributes_dict):
         self._attr = dict([
             (attr_name, LdapAttribute(attr_name, attr_values))
@@ -460,7 +496,7 @@ class LdapNode(object):
         if self._attr == None:
             self.retrieve_attributes()
         if name.startswith("is_"):
-            return name[3:] in self._attr[u"objectClass"]
+            return name[3:] in self._attr[u'objectClass']
         if name in self._attr:
             return self._attr[name]
         raise AttributeError('Cannot find attribute %s' % name)
@@ -492,15 +528,18 @@ class LdapNode(object):
     def __repr__(self):
         return "<LdapNode: %s>" % self._dn
 
+    ## @return None
     def save(self):
-        """Save any changes to the object"""
+        """
+        Save any changes to the object
+        """
         if self._attr == None:
             # No changes yet
             return
         if self._new:
             change_list = [ (_encode_utf8(x._name), [_encode_utf8(y) for y in x]) for x in self._attr.values() ]
             if LDAPOM_VERBOSE:  # pragma: no cover
-                print "ldap_add: %s" % change_list
+                print("ldap_add: {0}".format(change_list))
             self._conn.add(_encode_utf8(self._dn), change_list)
         else:
             change_list = [ (ldap.MOD_DELETE, _encode_utf8(x), None) for x in self._to_delete ]
@@ -509,13 +548,14 @@ class LdapNode(object):
             if len(change_list) == 0:
                 return
             if LDAPOM_VERBOSE:  # pragma: no cover
-                print "ldap_modify: %s" % change_list
+                print("ldap_modify: {0}".format(change_list))
             self._conn.modify(_encode_utf8(self._dn), change_list)
         self._new = False
         self._to_delete = []
         for attr in self._attr.values():
             attr.discard_change_list()
 
+    ## @return None
     def delete(self):
         """
         delete this object in ldap
@@ -530,6 +570,8 @@ class LdapNode(object):
         self._conn.delete(_encode_utf8(self._dn))
         self._valid = False
 
+    ## @return Boolean
+    ## @param password String Password which will be used for authentication
     def check_password(self, password):
         """
         check password for this ldap-object
@@ -541,6 +583,8 @@ class LdapNode(object):
         """
         return self._conn.authenticate( _encode_utf8(self._dn), _encode_utf8(password) )
 
+    ## @return None
+    ## @param password String new password (plain text as hashes are done by the LDAP server)
     def set_password(self, password):
         """
         set password for this ldap-object immediately
