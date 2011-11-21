@@ -351,7 +351,7 @@ class LdapAttribute(object):
             if type(value) == list:
                 self._values = value
             else:
-                self._values = [str(value)]
+                self._values = [unicode(value)]
 
     ## @return Integer
     def __len__(self):
@@ -368,7 +368,7 @@ class LdapAttribute(object):
         # if there's only one item, return it directly
         if len(self._values) == 1:
             return self._values[0]
-        return str(self._values)
+        return unicode(self._values)
 
     ## @return String
     def __repr__(self):
@@ -384,8 +384,8 @@ class LdapAttribute(object):
         add an attribute
         """
         if not value in self._values:
-            self._values.append(str(value))
-            self._changes.append((ldap.MOD_ADD, self._name, str(value)))
+            self._values.append(unicode(value))
+            self._changes.append((ldap.MOD_ADD, self._name, unicode(value)))
 
     ## @param value String the to-be-removed value
     ## @return None
@@ -394,8 +394,8 @@ class LdapAttribute(object):
         remove an attribute
         """
         if str(value) in self._values:
-            self._values.remove(str(value))
-            self._changes.append((ldap.MOD_DELETE, self._name, str(value)))
+            self._values.remove(unicode(value))
+            self._changes.append((ldap.MOD_DELETE, self._name, unicode(value)))
 
     ## @return Boolean
     def __contains__(self, item):
@@ -407,7 +407,7 @@ class LdapAttribute(object):
 
     def __setitem__(self, key, value):
         self._replace_all = True
-        self._values[key] = str(value)
+        self._values[key] = unicode(value)
 
     def __delitem__(self, key):
         self._replace_all = True
