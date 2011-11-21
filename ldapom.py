@@ -539,7 +539,7 @@ class LdapNode(object):
         if self._new:
             change_list = [ (_encode_utf8(x._name), [_encode_utf8(y) for y in x]) for x in self._attr.values() ]
             if LDAPOM_VERBOSE:  # pragma: no cover
-                print(("ldap_add: {0}".format(change_list)))
+                print("ldap_add: {0}".format(change_list))
             self._conn.add(_encode_utf8(self._dn), change_list)
         else:
             change_list = [ (ldap.MOD_DELETE, _encode_utf8(x), None) for x in self._to_delete ]
@@ -548,7 +548,7 @@ class LdapNode(object):
             if len(change_list) == 0:
                 return
             if LDAPOM_VERBOSE:  # pragma: no cover
-                print(("ldap_modify: {0}".format(change_list)))
+                print("ldap_modify: {0}".format(change_list))
             self._conn.modify(_encode_utf8(self._dn), change_list)
         self._new = False
         self._to_delete = []
