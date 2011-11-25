@@ -23,6 +23,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+## @mainpage
+# The @e ldapom python module provides a simple LDAP object mapper.
+# @author Florian Richter
+#
+
 import ldap
 
 LDAPOM_VERBOSE = False
@@ -331,11 +336,13 @@ class LdapConnection(object):
 
 class LdapAttribute(object):
     """
-        Holds an set of LDAP-Attributes with the same name.
-        All changes are recorded, so they can be push to ldap_modify
-        directly
+        Holds a set of LDAP-Attributes with the same name.
+        
+        All changes are recorded, so they can be pushed to ldap_modify directly.
     """
 
+    ## Creates a new attribute with the given @p name and @p value. If @p add is @e False (default), the current value
+    # is overwritten, else appended.
     def __init__(self, name, value, add=False):
         self._name = unicode(name)
         self._replace_all = False
@@ -370,7 +377,7 @@ class LdapAttribute(object):
             return self._values[0]
         return unicode(self._values)
 
-    ## @return String
+    ## @returns the String representation of the object.
     def __repr__(self):
         """
         literal representation
@@ -397,18 +404,23 @@ class LdapAttribute(object):
             self._values.remove(unicode(value))
             self._changes.append((ldap.MOD_DELETE, self._name, unicode(value)))
 
+    ## Membership test operator (<em>in</em> and <em>not in</em>), tests if the attribute contains the @p item.
     ## @return Boolean
     def __contains__(self, item):
         return self._values.__contains__(item)
 
-    ## @return String
+    ## @returns the item identified by @p key
     def __getitem__(self, key):
         return self._values[key]
 
+    ## Sets the value of @p key to @p value.
+    # @return None
     def __setitem__(self, key, value):
         self._replace_all = True
         self._values[key] = unicode(value)
 
+    ## Deletes the value identified by its @p key
+    # @return None
     def __delitem__(self, key):
         self._replace_all = True
         self._values.remove(key)
@@ -417,10 +429,11 @@ class LdapAttribute(object):
     def __iter__(self):
         return self._values.__iter__()
 
+    ## Sets single @p value, discards all existing ones.
     ## @return None
     def set_value(self, value):
         """
-        set single value, discard all existing ones
+        Sets single value, discards all existing ones
         """
         if type(value) == list:
             self._values = [unicode(x) for x in value]
@@ -457,6 +470,10 @@ class LdapNode(object):
     without network traffic.
     """
 
+    ## Creates the node using the given connection and dn.
+    # @param conn The connection string
+    # @param dn The DN to use
+    # @param new default: @e False
     def __init__(self, conn, dn, new=False):
         """
         Create lazy Node Object from dn
@@ -488,10 +505,11 @@ class LdapNode(object):
                 for attr_name, attr_values in attributes_dict.items()
         ])
 
+    ## @returns the value of the attribute identified by its @p name. Attributes starting with <em>is_*</em> are mapped
+    # to a check, if the objectClass is present.
     def __getattr__(self, name):
         """
             get an ldap-attribute
-            * attributes starting with is_* are mapped to a check, if the objectClass is present
         """
         if self._attr == None:
             self.retrieve_attributes()
@@ -501,6 +519,8 @@ class LdapNode(object):
             return self._attr[name]
         raise AttributeError('Cannot find attribute %s' % name)
 
+    ## Sets the @p value of the attribute identified by its @p name.
+    # @return None
     def __setattr__(self, name, value):
         "set ldap attribute"
         # handle private attributes the default way
@@ -513,21 +533,27 @@ class LdapNode(object):
         else:
             self._attr[name] = LdapAttribute(name, value, add=True)
 
+    ## Deletes the attribute identified by its @p name.
+    # @return None
     def __delattr__(self, name):
         if self._attr == None:
             self.retrieve_attributes()
         del self._attr[name]
         self._to_delete.append(name)
 
+    ## @returns the unicode DN of the node.
     def __unicode__(self):
         return self._dn
 
+    ## @returns the string DN of the node.
     def __str__(self):
         return self._dn.encode("utf-8")
 
+    ## @returns the String representation of the object.
     def __repr__(self):
         return "<LdapNode: %s>" % self._dn
 
+    ## Saves any changes made to the object.
     ## @return None
     def save(self):
         """
