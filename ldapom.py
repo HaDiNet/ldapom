@@ -374,8 +374,8 @@ class LdapAttribute(object):
         """
         # if there's only one item, return it directly
         if len(self._values) == 1:
-            return self._values[0]
-        return unicode(self._values)
+            return unicode(self._values[0], "utf-8")
+        return unicode(self._values, "utf-8")
 
     ## @returns the String representation of the object.
     def __repr__(self):
