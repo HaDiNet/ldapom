@@ -479,7 +479,7 @@ class LdapNode(object):
         Create lazy Node Object from dn
         """
         self._conn = conn
-        self._dn = unicode(dn)
+        self._dn = unicode(dn, 'utf-8')
         self._valid = True
         self._to_delete = []
         self._new = new
