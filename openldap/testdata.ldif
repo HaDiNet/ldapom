@@ -51,3 +51,16 @@ uidNumber: 11103
 userPassword: sam
 loginShell: /bin/bash
 
+# Noël, example.com
+dn: cn=Noël,dc=example,dc=com
+objectClass: person
+objectClass: posixAccount
+cn: Noël
+gidNumber: 11000
+homeDirectory: /home/Noel
+sn: Weihnachsmann
+uid: Noel
+uidNumber: 11104
+userPassword: noel
+loginShell: /bin/bash
+

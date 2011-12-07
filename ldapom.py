@@ -43,6 +43,17 @@ def _encode_utf8(str):
     else:
         return str
 
+def _decode_utf8(s):
+    """
+    Force a string to be unicode, convert from  UTF-8
+    """
+    if s == None:
+        return None
+    elif type(s) == str:
+        return s.decode('utf-8')
+    else:
+        return s
+
 # decorators
 def _retry_on_disconnect(func):
     "decorator to handle disconnection"
@@ -133,7 +144,9 @@ class LdapConnection(object):
             ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, self._certfile)
         self._lo = ldap.initialize(self._uri)
         #self._lo.set_option(ldap.OPT_X_TLS_DEMAND, False)
-        self._lo.simple_bind_s(self._login, self._password)
+        _login = _encode_utf8(self._login)
+        _password = _encode_utf8(self._password)
+        self._lo.simple_bind_s(_login, _password)
 
     @_retry_on_disconnect
     ## @param dn The dn to authenticate with
@@ -181,7 +194,9 @@ class LdapConnection(object):
         """
         raw ldap rename function
         """
-        self._lo.rename_s(dn, newrdn, delold=1)
+        _dn = _encode_utf8(dn)
+        _newrdn = _encode_utf8(newrdn)
+        self._lo.rename_s(_dn, _newrdn, delold=1)
 
 
     @_retry_on_disconnect
@@ -191,7 +206,8 @@ class LdapConnection(object):
         """
         raw ldap delete function
         """
-        self._lo.delete_s(dn)
+        _dn = _encode_utf8(dn)
+        self._lo.delete_s(_dn)
 
     @_retry_on_disconnect
     ## @param dn The DN of the LDAP node that should be deleted
@@ -218,8 +234,12 @@ class LdapConnection(object):
         """
         if base == None:
             base = self._base
-        _filter = _encode_utf8(filter)
-        result_id = self._lo.search(base, scope, _filter, retrieve_attributes)
+        base = _encode_utf8(base)
+        scope = _encode_utf8(scope)
+        if retrieve_attributes:
+            retrieve_attributes = map(_encode_utf8, retrieve_attributes)
+        filter = _encode_utf8(filter)
+        result_id = self._lo.search(base, scope, filter, retrieve_attributes)
         while 1:
             result_type, result_data = self._lo.result(result_id, self._timeout)
             if (result_data == []):
@@ -260,11 +280,6 @@ class LdapConnection(object):
     def check_if_dn_exists(self, dn):
         """
         Search ldap-server for dn and return a boolean
-
-        >>> ldap_connection.check_if_dn_exists('cn=jack,dc=example,dc=com')
-        True
-        >>> ldap_connection.check_if_dn_exists('cn=foobar,dc=example,dc=com')
-        False
         """
         try:
             res = self.query(base=dn, scope=ldap.SCOPE_BASE)
@@ -342,21 +357,21 @@ class LdapAttribute(object):
     ## Creates a new attribute with the given @p name and @p value. If @p add is @e False (default), the current value
     # is overwritten, else appended.
     def __init__(self, name, value, add=False):
-        self._name = unicode(name, 'utf-8')
+        self._name = _decode_utf8(name)
         self._replace_all = False
         self._changes = []
         if add:
             self._values = []
             if type(value) == list:
                 for v in value:
-                    self.append(v)
+                    self.append(_decode_utf8(v))
             else:
-                self.append(value)
+                self.append(_decode_utf8(value))
         else:
             if type(value) == list:
-                self._values = [unicode(val, 'utf-8') for val in value]
+                self._values = map(_decode_utf8, value)
             else:
-                self._values = [unicode(value, 'utf-8')]
+                self._values = [_decode_utf8(value)]
 
     ## @return Integer
     def __len__(self):
@@ -387,17 +402,19 @@ class LdapAttribute(object):
         """
         literal representation
         """
-        return "<LdapAttribute: %s=%s>" % (self._name, self.__unicode__())
+        return u"<LdapAttribute: %s=%s>" % (self._name, self.__unicode__())
 
     ## @param value String the additional value
     ## @return None
     def append(self, value):
         """
+        value = _decode_utf8(value)
         add an attribute
         """
+        value = _decode_utf8(value)
         if not value in self._values:
-            self._values.append(unicode(value, 'utf-8'))
-            self._changes.append((ldap.MOD_ADD, self._name, unicode(value, 'utf-8')))
+            self._values.append(value)
+            self._changes.append((ldap.MOD_ADD, self._name, value))
 
     ## @param value String the to-be-removed value
     ## @return None
@@ -405,28 +422,33 @@ class LdapAttribute(object):
         """
         remove an attribute
         """
-        if str(value) in self._values:
-            self._values.remove(unicode(value, 'utf-8'))
-            self._changes.append((ldap.MOD_DELETE, self._name, unicode(value, 'utf-8')))
+        value = _decode_utf8(value)
+        if value in self._values:
+            self._values.remove(value)
+            self._changes.append((ldap.MOD_DELETE, self._name, value))
 
     ## Membership test operator (<em>in</em> and <em>not in</em>), tests if the attribute contains the @p item.
     ## @return Boolean
     def __contains__(self, item):
+        item = _decode_utf8(item)
         return self._values.__contains__(item)
 
     ## @returns the item identified by @p key
     def __getitem__(self, key):
+        key = _decode_utf8(key)
         return self._values[key]
 
     ## Sets the value of @p key to @p value.
     # @return None
     def __setitem__(self, key, value):
+        key = _decode_utf8(key)
         self._replace_all = True
-        self._values[key] = unicode(value, 'utf-8')
+        self._values[key] = _decode_utf8(value)
 
     ## Deletes the value identified by its @p key
     # @return None
     def __delitem__(self, key):
+        key = _decode_utf8(key)
         self._replace_all = True
         self._values.remove(key)
 
@@ -441,9 +463,9 @@ class LdapAttribute(object):
         Sets single value, discards all existing ones
         """
         if type(value) == list:
-            self._values = [unicode(x, 'utf-8') for x in value]
+            self._values = [_decode_utf8(x) for x in value]
         else:
-            self._values = [unicode(value, 'utf-8')]
+            self._values = [_decode_utf8(value)]
         self._replace_all = True
 
     ## @return Array
@@ -484,7 +506,7 @@ class LdapNode(object):
         Create lazy Node Object from dn
         """
         self._conn = conn
-        self._dn = unicode(_encode_utf8(dn), 'utf-8')
+        self._dn = _decode_utf8(dn)
         self._valid = True
         self._to_delete = []
         self._new = new
@@ -559,7 +581,7 @@ class LdapNode(object):
 
     ## @returns the String representation of the object.
     def __repr__(self):
-        return "<LdapNode: %s>" % self._dn
+        return u"<LdapNode: %s>" % self._dn
 
     ## Saves any changes made to the object.
     ## @return None
@@ -593,13 +615,6 @@ class LdapNode(object):
     def delete(self):
         """
         delete this object in ldap
-
-        >>> ldap_connection.check_if_dn_exists('cn=jack,dc=example,dc=com')
-        True
-        >>> node = ldap_connection.get_ldap_node('cn=jack,dc=example,dc=com')
-        >>> node.delete()
-        >>> ldap_connection.check_if_dn_exists('cn=jack,dc=example,dc=com')
-        False
         """
         self._conn.delete(_encode_utf8(self._dn))
         self._valid = False
@@ -609,11 +624,6 @@ class LdapNode(object):
     def check_password(self, password):
         """
         check password for this ldap-object
-
-        >>> jack_node.check_password('jack')
-        True
-        >>> jack_node.check_password('wrong_pw')
-        False
         """
         return self._conn.authenticate( _encode_utf8(self._dn), _encode_utf8(password) )
 
@@ -622,10 +632,6 @@ class LdapNode(object):
     def set_password(self, password):
         """
         set password for this ldap-object immediately
-
-        >>> jack_node.set_password('asdfä')
-        >>> jack_node.check_password('asdfä')
-        True
         """
         # Issue a LDAP Password Modify Extended Operation
         self._conn.set_password(_encode_utf8(self._dn), _encode_utf8(password))
