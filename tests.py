@@ -96,14 +96,42 @@ class LdapomTest(LdapTest):
         s = lambda x: self.string_cleaner(x)
         node = self.ldap_connection.new_ldap_node('cn=newuser,dc=example,dc=com')
         node.objectClass = ['person']
-        node.sn = 'Sören'
-        node.cn = 'newuser'
+        node.sn = s('Sören')
+        node.cn = s('newuser')
         node.save() # the object is created not until here!
         node = self.ldap_connection.get_ldap_node('cn=newuser,dc=example,dc=com')
         self.assertEquals('Sören'.decode('utf-8'), unicode(node.sn))
-        self.assertEquals('Sören'.decode('utf-8'), node.sn.__unicode__())
         self.assertEquals('newuser'.decode('utf-8'), unicode(node.cn))
-        self.assertEquals('newuser'.decode('utf-8'), node.cn.__unicode__())
+
+    ## test get node
+    def test_get_node(self):
+        s = lambda x: self.string_cleaner(x)
+        node = self.ldap_connection.get_ldap_node('cn=jack,dc=example,dc=com')
+        self.assertEquals('jack'.decode('utf-8'), node.uid.__unicode__())
+        self.assertEquals(
+            ['person'.decode('utf-8'), 'posixAccount'.decode('utf-8')],
+            [unicode(x) for x in node.objectClass]
+        )
+        # make sure, it's lazy
+        node = self.ldap_connection.get_ldap_node('cn=nobody,dc=example,dc=com')
+        with self.assertRaises(ldap.NO_SUCH_OBJECT):
+            unicode(node.cn)
+
+    def test_retrieve_ldap_node(self):
+        s = lambda x: self.string_cleaner(x)
+        node = self.ldap_connection.retrieve_ldap_node('cn=jack,dc=example,dc=com')
+        self.assertEquals('jack'.decode('utf-8'), unicode(node.uid))
+        # make sure, it's not lazy
+        with self.assertRaises(ldap.NO_SUCH_OBJECT):
+            node = self.ldap_connection.retrieve_ldap_node('cn=nobody,dc=example,dc=com')
+
+    ## test changing node attributes
+    def test_change_node(self):
+        s = lambda x: self.string_cleaner(x)
+        node = self.ldap_connection.get_ldap_node('cn=jack,dc=example,dc=com')
+        node.sn = s('Sören')
+        node.save()
+        self.assertEquals('Sören'.decode('utf-8'), unicode(node.sn))
 
 
 ## Testcase ldapom with unicode-strings
