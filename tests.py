@@ -103,8 +103,8 @@ class LdapomTest(LdapTest):
         self.assertEquals('Sören'.decode('utf-8'), unicode(node.sn))
         self.assertEquals('newuser'.decode('utf-8'), unicode(node.cn))
 
-    ## test get node
-    def test_get_node(self):
+    ## test get ldap node
+    def test_get_ldap_node(self):
         s = lambda x: self.string_cleaner(x)
         node = self.ldap_connection.get_ldap_node('cn=jack,dc=example,dc=com')
         self.assertEquals('jack'.decode('utf-8'), node.uid.__unicode__())
