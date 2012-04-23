@@ -147,9 +147,7 @@ class LdapConnection(object):
         lo = ldap.initialize(self._uri)
         # TODO:tls
         try:
-            _dn = _encode_utf8(dn)
-            _password = _encode_utf8(password)
-            lo.simple_bind_s(dn, password)
+            lo.simple_bind_s(_encode_utf8(dn), _encode_utf8(password))
             return True
         except ldap.INVALID_CREDENTIALS:
             return False
@@ -337,7 +335,7 @@ class LdapConnection(object):
 class LdapAttribute(object):
     """
         Holds a set of LDAP-Attributes with the same name.
-        
+
         All changes are recorded, so they can be pushed to ldap_modify directly.
     """
 
@@ -356,7 +354,7 @@ class LdapAttribute(object):
                 self.append(value)
         else:
             if type(value) == list:
-                self._values = value
+                self._values = [unicode(val) for val in value]
             else:
                 self._values = [unicode(value)]
 
@@ -367,6 +365,13 @@ class LdapAttribute(object):
         """
         return len(self._values)
 
+    ## @returns String
+    def __str__(self):
+        # if there's only one item, return it directly
+        if len(self._values) == 1:
+            return self._values[0].encode("utf-8")
+        return [val.encode("utf-8") for val in self._values]
+
     ## @return String
     def __unicode__(self):
         """
@@ -374,8 +379,8 @@ class LdapAttribute(object):
         """
         # if there's only one item, return it directly
         if len(self._values) == 1:
-            return unicode(self._values[0], "utf-8")
-        return unicode(self._values, "utf-8")
+            return self._values[0]
+        return self._values
 
     ## @returns the String representation of the object.
     def __repr__(self):
@@ -479,7 +484,7 @@ class LdapNode(object):
         Create lazy Node Object from dn
         """
         self._conn = conn
-        self._dn = unicode(dn, 'utf-8')
+        self._dn = unicode(_encode_utf8(dn), 'utf-8')
         self._valid = True
         self._to_delete = []
         self._new = new
