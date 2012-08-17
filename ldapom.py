@@ -339,14 +339,25 @@ class LdapAttribute(object):
         All changes are recorded, so they can be pushed to ldap_modify directly.
     """
 
+    def __addval__(self, val):
+        """
+        Add a value to the list of attribute values.
+        """
+        try:
+            uval = unicode(val)
+            self._unicode_values.append(uval)
+        except UnicodeDecodeError:
+            self._binary_values.append(val)
+
     ## Creates a new attribute with the given @p name and @p value. If @p add is @e False (default), the current value
     # is overwritten, else appended.
     def __init__(self, name, value, add=False):
+        self._unicode_values = []
+        self._binary_values = []
         self._name = unicode(name)
         self._replace_all = False
         self._changes = []
         if add:
-            self._values = []
             if type(value) == list:
                 for v in value:
                     self.append(v)
@@ -354,23 +365,27 @@ class LdapAttribute(object):
                 self.append(value)
         else:
             if type(value) == list:
-                self._values = [unicode(val) for val in value]
+                for val in value:
+                    self.__addval__(val)
             else:
-                self._values = [unicode(value)]
+                self.__addval__(value)
 
     ## @return Integer
     def __len__(self):
         """
         The number of values set for this attribute
         """
-        return len(self._values)
+        return len(self._unicode_values) + len(self._binary_values)
 
     ## @returns String
     def __str__(self):
         # if there's only one item, return it directly
-        if len(self._values) == 1:
-            return self._values[0].encode("utf-8")
-        return [val.encode("utf-8") for val in self._values]
+        if self.__len__() == 1:
+            if len(self._unicode_values) == 1:
+                return self._unicode_values[0].encode("utf-8")
+            else:
+                return self._binary_values[0]
+        return [val.encode("utf-8") for val in self._unicode_values] + ['<binary>' for val in self._binary_values]
 
     ## @return String
     def __unicode__(self):
@@ -378,9 +393,9 @@ class LdapAttribute(object):
         unicode value of this attribute
         """
         # if there's only one item, return it directly
-        if len(self._values) == 1:
-            return self._values[0]
-        return self._values
+        if len(self._unicode_values) == 1:
+            return self._unicode_values[0]
+        return self._unicode_values
 
     ## @returns the String representation of the object.
     def __repr__(self):
@@ -395,9 +410,14 @@ class LdapAttribute(object):
         """
         add an attribute
         """
-        if not value in self._values:
-            self._values.append(unicode(value))
-            self._changes.append((ldap.MOD_ADD, self._name, unicode(value)))
+        if (not value in self._unicode_values) and (not value in self._binary_values):
+            self.__addval__(value)
+            val = value
+            try:
+                val = unicode(value)
+            except UnicodeDecodeError:
+                pass
+            self._changes.append((ldap.MOD_ADD, self._name, val))
 
     ## @param value String the to-be-removed value
     ## @return None
@@ -405,34 +425,51 @@ class LdapAttribute(object):
         """
         remove an attribute
         """
-        if str(value) in self._values:
-            self._values.remove(unicode(value))
+        if value in self._binary_values:
+            self._binary_values.remove(value)
+            self._changes.append((ldap.MOD_DELETE, self._name, value))
+        elif str(value) in self._unicode_values:
+            self._unicode_values.remove(unicode(value))
             self._changes.append((ldap.MOD_DELETE, self._name, unicode(value)))
 
     ## Membership test operator (<em>in</em> and <em>not in</em>), tests if the attribute contains the @p item.
     ## @return Boolean
     def __contains__(self, item):
-        return self._values.__contains__(item)
+        return (self._unicode_values.__contains__(item) or self._binary_values.__contains__(item))
 
     ## @returns the item identified by @p key
     def __getitem__(self, key):
-        return self._values[key]
+        if key < len(self._unicode_values):
+            return self._unicode_values[key]
+        else:
+            return self._binary_values[key - len(self._unicode_values)]
 
     ## Sets the value of @p key to @p value.
     # @return None
     def __setitem__(self, key, value):
         self._replace_all = True
-        self._values[key] = unicode(value)
+        if key < len(self._unicode_values):
+            # If the new value still is unicode encodable, just replace it.
+            try:
+                self._unicode_values[key] = unicode(value)
+            except UnicodeDecodeError:
+                self._unicode_values.remove(key)
+                self._binary_values.append(value)
+        else:
+            self._binary_values[key - len(self._unicode_values)] = value
 
     ## Deletes the value identified by its @p key
     # @return None
     def __delitem__(self, key):
         self._replace_all = True
-        self._values.remove(key)
+        if key < len(self._unicode_values):
+            self._unicode_values.remove(key)
+        else:
+            self._binary_values.remove(key - len(self._unicode_values))
 
     ## @return Iterator
     def __iter__(self):
-        return self._values.__iter__()
+        return (self._unicode_values + self._binary_values).__iter__()
 
     ## Sets single @p value, discards all existing ones.
     ## @return None
@@ -440,10 +477,13 @@ class LdapAttribute(object):
         """
         Sets single value, discards all existing ones
         """
+        self._unicode_values = []
+        self._binary_values = []
         if type(value) == list:
-            self._values = [unicode(x) for x in value]
+            for x in value:
+                self.__addval__(x)
         else:
-            self._values = [unicode(value)]
+            self.__addval__(value)
         self._replace_all = True
 
     ## @return Array
@@ -454,8 +494,9 @@ class LdapAttribute(object):
         if self._replace_all:
             if len(self) == 0:
                 return [(ldap.MOD_DELETE, self._name, None)]
-            change_list = [ (ldap.MOD_REPLACE, self._name, x) for x in self._values[0:1]]
-            change_list += [ (ldap.MOD_ADD, self._name, x) for x in self._values[1:] ]
+            values = self._unicode_values + self._binary_values
+            change_list = [ (ldap.MOD_REPLACE, self._name, x) for x in values[0:1]]
+            change_list += [ (ldap.MOD_ADD, self._name, x) for x in values[1:] ]
             return change_list
         return self._changes
 
