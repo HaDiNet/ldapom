@@ -462,10 +462,10 @@ class LdapAttribute(object):
     # @return None
     def __delitem__(self, key):
         self._replace_all = True
-        if key < len(self._unicode_values):
+        if self._unicode_values.__contains__(key):
             self._unicode_values.remove(key)
         else:
-            self._binary_values.remove(key - len(self._unicode_values))
+            self._binary_values.remove(key)
 
     ## @return Iterator
     def __iter__(self):
