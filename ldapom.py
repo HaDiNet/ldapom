@@ -385,7 +385,7 @@ class LdapAttribute(object):
                 return self._unicode_values[0].encode("utf-8")
             else:
                 return self._binary_values[0]
-        return [val.encode("utf-8") for val in self._unicode_values] + ['<binary>' for val in self._binary_values]
+        return '[' + ', '.join([val.encode("utf-8") for val in self._unicode_values] + ['<binary>' for val in self._binary_values]) + ']'
 
     ## @return String
     def __unicode__(self):
