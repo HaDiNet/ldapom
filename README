@@ -18,6 +18,15 @@ Fork it!
 https://github.com/HaDiNet/ldapom
 
 
+OS specific installation
+------------------------
+
+The unit tests need the ldap-utils and the openldap server.
+
+=== Gentoo ===
+
+You need to emerge net-nds/openldap and add /usr/lib64/openldap/ to your PATH.
+
 Usage
 -----
 
