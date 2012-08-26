@@ -496,6 +496,11 @@ class LdapNode(object):
     ## Expose dn as a ready-only property
     dn = property(lambda self: self._dn)
 
+    ## Get the parent node in the LDAP tree
+    def get_parent(self):
+        parent_dn = ','.join(ldap.explode_dn(self._dn)[1:])
+        return LdapNode(self._conn, parent_dn)
+
     ## @return None
     def retrieve_attributes(self):
         """Retrieves the node's attributes from the database.
