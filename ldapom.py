@@ -493,6 +493,13 @@ class LdapNode(object):
         else:
             self._attr = None
 
+    def get_parent(self):
+        """
+        Get the parent node in the LDAP tree
+        """
+        parent_dn = ','.join(ldap.explode_dn(self._dn)[1:])
+        return LdapNode(self._conn, parent_dn)
+
     ## @return None
     def retrieve_attributes(self):
         """Retrieves the node's attributes from the database.
