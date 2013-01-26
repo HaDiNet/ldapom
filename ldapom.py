@@ -493,6 +493,9 @@ class LdapNode(object):
         else:
             self._attr = None
 
+    ## Expose dn as a ready-only property
+    dn = property(lambda self: self._dn)
+
     ## @return None
     def retrieve_attributes(self):
         """Retrieves the node's attributes from the database.
