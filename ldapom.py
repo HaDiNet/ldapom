@@ -342,7 +342,7 @@ class LdapAttribute(object):
     ## Creates a new attribute with the given @p name and @p value. If @p add is @e False (default), the current value
     # is overwritten, else appended.
     def __init__(self, name, value, add=False):
-        self._name = unicode(name)
+        self._name = unicode(name, 'utf-8')
         self._replace_all = False
         self._changes = []
         if add:
@@ -354,9 +354,9 @@ class LdapAttribute(object):
                 self.append(value)
         else:
             if type(value) == list:
-                self._values = [unicode(val) for val in value]
+                self._values = [unicode(val, 'utf-8') for val in value]
             else:
-                self._values = [unicode(value)]
+                self._values = [unicode(value, 'utf-8')]
 
     ## @return Integer
     def __len__(self):
@@ -396,8 +396,8 @@ class LdapAttribute(object):
         add an attribute
         """
         if not value in self._values:
-            self._values.append(unicode(value))
-            self._changes.append((ldap.MOD_ADD, self._name, unicode(value)))
+            self._values.append(unicode(value, 'utf-8'))
+            self._changes.append((ldap.MOD_ADD, self._name, unicode(value, 'utf-8')))
 
     ## @param value String the to-be-removed value
     ## @return None
@@ -406,8 +406,8 @@ class LdapAttribute(object):
         remove an attribute
         """
         if str(value) in self._values:
-            self._values.remove(unicode(value))
-            self._changes.append((ldap.MOD_DELETE, self._name, unicode(value)))
+            self._values.remove(unicode(value, 'utf-8'))
+            self._changes.append((ldap.MOD_DELETE, self._name, unicode(value, 'utf-8')))
 
     ## Membership test operator (<em>in</em> and <em>not in</em>), tests if the attribute contains the @p item.
     ## @return Boolean
@@ -422,7 +422,7 @@ class LdapAttribute(object):
     # @return None
     def __setitem__(self, key, value):
         self._replace_all = True
-        self._values[key] = unicode(value)
+        self._values[key] = unicode(value, 'utf-8')
 
     ## Deletes the value identified by its @p key
     # @return None
@@ -441,9 +441,9 @@ class LdapAttribute(object):
         Sets single value, discards all existing ones
         """
         if type(value) == list:
-            self._values = [unicode(x) for x in value]
+            self._values = [unicode(x, 'utf-8') for x in value]
         else:
-            self._values = [unicode(value)]
+            self._values = [unicode(value, 'utf-8')]
         self._replace_all = True
 
     ## @return Array
