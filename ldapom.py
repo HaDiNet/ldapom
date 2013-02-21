@@ -40,7 +40,7 @@ def _encode_utf8(str):
     elif type(str) == unicode:
         return str.encode('utf-8')
     else:
-        return str
+        return unicode(str)
 
 ## Force a string to be unicode, convert from  UTF-8
 def _decode_utf8(s):
