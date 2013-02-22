@@ -133,6 +133,33 @@ class LdapomTest(LdapTest):
         node.save()
         self.assertEquals('Sören'.decode('utf-8'), unicode(node.sn))
 
+    ## test searching
+    def test_search(self):
+        s = lambda x: self.string_cleaner(x)
+        result = self.ldap_connection.search(s('cn=*n*'))
+        self.assertEqual("[<LdapNode: cn=daniel,dc=example,dc=com>, <LdapNode: cn=Noël,dc=example,dc=com>]", repr(list(result)))
+
+    ## test __str__
+    def test_to_string(self):
+        node = self.ldap_connection.get_ldap_node('cn=Noël,dc=example,dc=com')
+        self.assertEqual("cn=Noël,dc=example,dc=com", str(node))
+        self.assertEqual("Noël", str(node.cn))
+        self.assertEqual("['person', 'posixAccount']", str(node.objectClass))
+
+    ## test __unicode__
+    def test_to_unicode(self):
+        node = self.ldap_connection.get_ldap_node('cn=Noël,dc=example,dc=com')
+        self.assertEqual(u"cn=Noël,dc=example,dc=com", unicode(node))
+        self.assertEqual(u"Noël", unicode(node.cn))
+        self.assertEqual(u"[u'person', u'posixAccount']", unicode(node.objectClass))
+
+    ## test __repr__
+    def test_repr(self):
+        node = self.ldap_connection.get_ldap_node('cn=Noël,dc=example,dc=com')
+        self.assertEqual("<LdapNode: cn=Noël,dc=example,dc=com>", repr(node))
+        self.assertEqual("<LdapAttribute: cn=Noël>", repr(node.cn))
+        self.assertEqual("<LdapAttribute: objectClass=[u'person', u'posixAccount']>", repr(node.objectClass))
+
 
 ## Testcase ldapom with unicode-strings
 class LdapomUnicodeTest(LdapomTest):
@@ -149,8 +176,6 @@ def set_up(docTest):
     docTest.globs['ldap_connection'] = docTest.ldap_connection
     docTest.globs['lc'] = docTest.ldap_connection
     docTest.globs['jack_node'] = docTest.ldap_connection.get_ldap_node('cn=jack,dc=example,dc=com')
-    # delete Noël, as doctests can't cope with non ascii characters
-    docTest.ldap_connection.delete('cn=Noël,dc=example,dc=com')
 
 def tear_down(docTest):
     docTest.ldap_server.stop()

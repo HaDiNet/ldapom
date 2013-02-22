@@ -34,13 +34,13 @@ import ldap
 LDAPOM_VERBOSE = False
 
 ## Force a string to be encoded as UTF-8
-def _encode_utf8(str):
-    if str == None:
+def _encode_utf8(string):
+    if string == None:
         return None
-    elif type(str) == unicode:
-        return str.encode('utf-8')
+    elif type(string) == unicode:
+        return string.encode('utf-8')
     else:
-        return unicode(str)
+        return str(string)
 
 ## Force a string to be unicode, convert from  UTF-8
 def _decode_utf8(s):
@@ -222,7 +222,6 @@ class LdapConnection(object):
         if base == None:
             base = self._base
         base = _encode_utf8(base)
-        scope = _encode_utf8(scope)
         if retrieve_attributes:
             retrieve_attributes = map(_encode_utf8, retrieve_attributes)
         filter = _encode_utf8(filter)
@@ -338,7 +337,7 @@ class LdapAttribute(object):
         # if there's only one item, return it directly
         if len(self._values) == 1:
             return self._values[0].encode("utf-8")
-        return [val.encode("utf-8") for val in self._values]
+        return str([val.encode("utf-8") for val in self._values])
 
     ## unicode value of this attribute
     #
@@ -347,13 +346,14 @@ class LdapAttribute(object):
         # if there's only one item, return it directly
         if len(self._values) == 1:
             return self._values[0]
-        return self._values
+        return unicode(self._values)
 
     ## literal representation
     #
     #  @returns the String representation of the object.
     def __repr__(self):
-        return u"<LdapAttribute: %s=%s>" % (self._name, self.__unicode__())
+        r = u"<LdapAttribute: %s=%s>" % (self._name, self.__unicode__())
+        return r.encode('utf-8')
 
     ## add an attribute
     #
@@ -520,7 +520,8 @@ class LdapNode(object):
 
     ## @returns the String representation of the object.
     def __repr__(self):
-        return u"<LdapNode: %s>" % self._dn
+        r = u"<LdapNode: %s>" % self._dn
+        return r.encode('utf-8')
 
     ## Saves any changes made to the object.
     ## @return None
