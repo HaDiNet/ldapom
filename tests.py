@@ -160,6 +160,14 @@ class LdapomTest(LdapTest):
         self.assertEqual("<LdapAttribute: cn=Noël>", repr(node.cn))
         self.assertEqual("<LdapAttribute: objectClass=[u'person', u'posixAccount']>", repr(node.objectClass))
 
+    ## test get_parent
+    def test_get_parent(self):
+        node = self.ldap_connection.get_ldap_node('cn=Noël,dc=example,dc=com')
+        parent = node.get_parent()
+        self.assertEqual("<LdapNode: dc=example,dc=com>", repr(parent))
+        self.assertEqual(u"example", unicode(parent.o))
+        self.assertEqual("<LdapNode: dc=com>", repr(parent.get_parent()))
+
 
 ## Testcase ldapom with unicode-strings
 class LdapomUnicodeTest(LdapomTest):

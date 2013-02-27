@@ -459,7 +459,8 @@ class LdapNode(object):
 
     ## Get the parent node in the LDAP tree
     def get_parent(self):
-        parent_dn = ','.join(ldap.explode_dn(self._dn)[1:])
+        dn_parts = map(_decode_utf8, ldap.explode_dn(_encode_utf8(self._dn)))
+        parent_dn = u','.join(dn_parts[1:])
         return LdapNode(self._conn, parent_dn)
 
 
