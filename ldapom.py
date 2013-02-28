@@ -1,6 +1,5 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
-"A LDAP object-mapper"
 
 # Copyright (c) 2010 Florian Richter <mail@f1ori.de>
 #
@@ -24,7 +23,9 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## @mainpage
+#
 # The @e ldapom python module provides a simple LDAP object mapper.
+#
 # @author Florian Richter
 #
 
@@ -32,22 +33,28 @@ import ldap
 
 LDAPOM_VERBOSE = False
 
-def _encode_utf8(str):
-    """
-    Force a string to be encoded as UTF-8
-    """
-    if str == None:
+## Force a string to be encoded as UTF-8
+def _encode_utf8(string):
+    if string == None:
         return None
-    elif type(str) == unicode:
-        return str.encode('utf-8')
+    elif type(string) == unicode:
+        return string.encode('utf-8')
     else:
-        return str
+        return str(string)
 
-# decorators
+## Force a string to be unicode, convert from  UTF-8
+def _decode_utf8(s):
+    if s == None:
+        return None
+    elif type(s) == str:
+        return s.decode('utf-8')
+    else:
+        return s
+
+## decorator to handle disconnection of ldap server
 def _retry_on_disconnect(func):
-    "decorator to handle disconnection"
+    ## wrapper function, catching the exception
     def new(self, *args, **kws):
-        "wrapper function, catching the exception"
         try:
             return func.__call__(self, *args, **kws)
         except ldap.SERVER_DOWN:
@@ -57,14 +64,13 @@ def _retry_on_disconnect(func):
     return new
 
 
+## decorator for generator functions to handle disconnection
+## of ldap server
 def _retry_on_disconnect_gen(func):
-    "decorator for generator functions to handle disconnection"
 
+    ## wrapper function, catching the exception
+    ## (acting as generator function)
     def new(self, *args, **kws):
-        """
-                wrapper function, catching the exception
-                (acting as generator function)
-        """
         try:
             gen = func(self, *args, **kws)
             yield gen.next()
@@ -79,18 +85,21 @@ def _retry_on_disconnect_gen(func):
     return new
 
 
+## This Object holds all parameters to connect to an ldapserver
+## and provide a minimal convenience.
+## Methods marked as internal in the docstring should be used only
+## by this modul.
+##
+## Methods for external relevance so far:
+## * __init__
+## * get_ldap_node
+## * retrieve_ldap_node
 class LdapConnection(object):
-    """
-        This Object holds all parameters to connect to an ldapserver
-        and provide a minimal convenience.
-        Methods marked as internal in the docstring should be used only
-        by this modul.
 
-        Methods for external relevance so far:
-        * __init__
-        * getLdapNode
-    """
-
+    ## Create a new LdapConnection.
+    ##
+    ## This already connects to the LDAP server. There is no lazy loading.
+    ##
     ## @param uri URI indicating the LDAP instance we should connect to
     ## @param base The Base of the LDAP we are working in
     ## @param login The dn we are authenticating with
@@ -99,9 +108,6 @@ class LdapConnection(object):
     ## @param timelimit Set the timelimit a search request may take
     def __init__(self, uri, base, login, password, certfile=None, timelimit=30):
         """
-        Create a new LdapConnection.
-
-        This already connects to the LDAP server. There is no lazy loading.
         """
 
         ## native python-ldap connection instance
@@ -123,27 +129,27 @@ class LdapConnection(object):
         ## Set timelimit, python-ldap defaults to 30
         ldap.set_option(ldap.OPT_TIMELIMIT, timelimit)
 
+    ## Connect to ldap-server
+    ##
     ## @return None
     def _connect(self):
-        """
-        Connect to ldap-server
-        """
         if self._certfile:
             ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
             ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, self._certfile)
         self._lo = ldap.initialize(self._uri)
         #self._lo.set_option(ldap.OPT_X_TLS_DEMAND, False)
-        self._lo.simple_bind_s(self._login, self._password)
+        _login = _encode_utf8(self._login)
+        _password = _encode_utf8(self._password)
+        self._lo.simple_bind_s(_login, _password)
 
     @_retry_on_disconnect
+    ## Try to authenticate on a seperate connection to check the (dn, password)
+    ## combination.
+    ##
     ## @param dn The dn to authenticate with
     ## @param password The password for the login dn
     ## @return boolean
     def authenticate(self, dn, password):
-        """
-        Try to authenticate on a seperate connection to check the (dn, password)
-        combination.
-        """
         lo = ldap.initialize(self._uri)
         # TODO:tls
         try:
@@ -153,59 +159,59 @@ class LdapConnection(object):
             return False
 
     @_retry_on_disconnect
+    ## raw ldap add function
+    ##
     ## @param dn The new/modified dn
     ## @param attrs The added attributes
     ## @return None
     def add(self, dn, attrs):
-        """
-        raw ldap add function
-        """
         self._lo.add_s(dn, attrs)
 
     @_retry_on_disconnect
+    ## raw ldap modify function
+    ##
     ## @param dn The modified dn
     ## @param change The changed attributes
     ## @return None
     def modify(self, dn, change):
-        """
-        raw ldap modify function
-        """
         self._lo.modify_s(dn, change)
 
 
     @_retry_on_disconnect
+    ## raw ldap rename function
+    ##
     ## @param dn The old DN
     ## @param newrdn The new DN
     ## @return None
     def rename(self, dn, newrdn):
-        """
-        raw ldap rename function
-        """
-        self._lo.rename_s(dn, newrdn, delold=1)
+        _dn = _encode_utf8(dn)
+        _newrdn = _encode_utf8(newrdn)
+        self._lo.rename_s(_dn, _newrdn, delold=1)
 
 
     @_retry_on_disconnect
+    ## raw ldap delete function
+    ##
     ## @param dn The DN of the LDAP node that should be deleted
     ## @return None
     def delete(self, dn):
-        """
-        raw ldap delete function
-        """
-        self._lo.delete_s(dn)
+        _dn = _encode_utf8(dn)
+        self._lo.delete_s(_dn)
 
     @_retry_on_disconnect
+    ## recursive delete function
+    ##
     ## @param dn The DN of the LDAP node that should be deleted
     ## @return None
     def delete_r(self, dn):
-        """
-        recursive delete function
-        """
         toDelete = list(self.query(base=dn,scope=ldap.SCOPE_ONELEVEL))
         for sub in toDelete:
             self.delete_r(sub[0])
         self.delete(dn)
 
     @_retry_on_disconnect_gen
+    ## Convencience wrapper arround python-ldap internal search
+    ##
     ## @param filter The LDAP query send to the server
     ## @param retrieve_attributes The list of attributes that should be fetched. If None, all are fetched.
     ## @param base The base dn from where the search starts in the LDAP tree
@@ -213,13 +219,13 @@ class LdapConnection(object):
     ## @return string[]
     def query(self, filter="(objectClass=*)", retrieve_attributes=None, base=None,
                 scope=ldap.SCOPE_SUBTREE):
-        """
-        Convencience wrapper arround python-ldap internal search
-        """
         if base == None:
             base = self._base
-        _filter = _encode_utf8(filter)
-        result_id = self._lo.search(base, scope, _filter, retrieve_attributes)
+        base = _encode_utf8(base)
+        if retrieve_attributes:
+            retrieve_attributes = map(_encode_utf8, retrieve_attributes)
+        filter = _encode_utf8(filter)
+        result_id = self._lo.search(base, scope, filter, retrieve_attributes)
         while 1:
             result_type, result_data = self._lo.result(result_id, self._timeout)
             if (result_data == []):
@@ -229,43 +235,35 @@ class LdapConnection(object):
                     yield result_data[0]
 
     @_retry_on_disconnect
+    ## Change the password of a user.
+    ##
+    ## This issues a LDAP Password Modify Extended Operation.
+    ##
     ## @param dn The DN of which the password should be changed
     ## @param password The new password
     ## @return None
     def set_password(self, dn, password):
-        """
-        Change the password of a user.
-
-        This issues a LDAP Password Modify Extended Operation.
-        """
         _dn = _encode_utf8(dn)
         _password = _encode_utf8(password)
         # Issue a LDAP Password Modify Extended Operation
         self._lo.passwd_s(_dn, None, _password)
 
+    ## Like query(), but wraps each object as an LdapNode.
+    ##
     ## @param args The arguments supplied which will be passed thru to query()
     ## @param kwargs The keyword arguments supplied which will be passed thru to query()
     ## @return LdapNode[]
     def search(self, *args, **kwargs):
-        """
-        Like query(), but wraps each object as an LdapNode.
-        """
         for dn, attributes_dict in self.query(*args, **kwargs):
             node = LdapNode(self, dn)
             node._load_attributes(attributes_dict)
             yield node
 
+    ## Search ldap-server for dn and return a boolean
+    ##
     ## @param dn The DN for which existence should be checked
     ## @return boolean
     def check_if_dn_exists(self, dn):
-        """
-        Search ldap-server for dn and return a boolean
-
-        >>> ldap_connection.check_if_dn_exists('cn=jack,dc=example,dc=com')
-        True
-        >>> ldap_connection.check_if_dn_exists('cn=foobar,dc=example,dc=com')
-        False
-        """
         try:
             res = self.query(base=dn, scope=ldap.SCOPE_BASE)
             if len(list(res)) != 0:
@@ -274,95 +272,64 @@ class LdapConnection(object):
             return False
         return False
 
+    ## Create lazy LdapNode-Object linked to this connection
+    ##
     ## @param dn The DN of the LDAP node which we would like to have mapped into a LdapNode
     ## @return LdapNode
     def get_ldap_node(self, dn):
-        """
-        Create lazy LdapNode-Object linked to this connection
-
-        >>> ldap_connection.get_ldap_node('cn=jack,dc=example,dc=com')
-        <LdapNode: cn=jack,dc=example,dc=com>
-        >>> ldap_connection.get_ldap_node('cn=nobody,dc=example,dc=com') # this won't check, if node exists
-        <LdapNode: cn=nobody,dc=example,dc=com>
-        >>> _.cn
-        Traceback (most recent call last):
-        NO_SUCH_OBJECT: {'desc': 'No such object'}
-        """
         return LdapNode(self, dn)
 
+    ## Retrieves the object from that database and wraps it as an LdapNode.
+    ##
+    ## This is the same as get_ldap_node, except that all attributes
+    ## for this node will be obtained from that database immediately
+    ## instead of lazily.
+    ##
+    ## It will raise ldap.NO_SUCH_OBJECT if the entry cannot be found.
+    ##
     ## @param dn The DN of the LDAP node which we would like to have mapped into a LdapNode
     ## @return LdapNode
     def retrieve_ldap_node(self, dn):
-        """
-        Retrieves the object from that database and wraps it as an LdapNode.
-
-        This is the same as get_ldap_node, except that all attributes
-        for this node will be obtained from that database immediately
-        instead of lazily.
-
-        It will raise ldap.NO_SUCH_OBJECT if the entry cannot be found.
-
-        >>> ldap_connection.retrieve_ldap_node('cn=jack,dc=example,dc=com')
-        <LdapNode: cn=jack,dc=example,dc=com>
-        >>> ldap_connection.retrieve_ldap_node('cn=nobody,dc=example,dc=com')
-        Traceback (most recent call last):
-        NO_SUCH_OBJECT: {'desc': 'No such object'}
-        """
         node = LdapNode(self, dn)
         node.retrieve_attributes()
         return node
 
-    ## @param dn The DN of the newly created LdapNode
-    ## @return LdapNode
+    ## Create new LdapNode-Object linked to this connection
+    #
+    #  @param dn The DN of the newly created LdapNode
+    #  @return LdapNode
     def new_ldap_node(self, dn):
-        """
-        Create new LdapNode-Object linked to this connection
-
-        >>> node = ldap_connection.new_ldap_node('cn=newuser,dc=example,dc=com')
-        >>> node.objectClass = ['person']
-        >>> node.sn = 'Daniel'
-        >>> node.cn = 'newuser'
-        >>> node.save() # the object is created not until here!
-        >>> node = ldap_connection.get_ldap_node('cn=newuser,dc=example,dc=com')
-        >>> unicode(node.sn)
-        u'Daniel'
-        >>> unicode(node.cn)
-        u'newuser'
-        """
         return LdapNode(self, dn, new=True)
 
 
+## Holds a set of LDAP-Attributes with the same name.
+#
+#  All changes are recorded, so they can be pushed to ldap_modify directly.
 class LdapAttribute(object):
-    """
-        Holds a set of LDAP-Attributes with the same name.
-
-        All changes are recorded, so they can be pushed to ldap_modify directly.
-    """
 
     ## Creates a new attribute with the given @p name and @p value. If @p add is @e False (default), the current value
     # is overwritten, else appended.
     def __init__(self, name, value, add=False):
-        self._name = unicode(name, 'utf-8')
+        self._name = _decode_utf8(name)
         self._replace_all = False
         self._changes = []
         if add:
             self._values = []
             if type(value) == list:
                 for v in value:
-                    self.append(v)
+                    self.append(_decode_utf8(v))
             else:
-                self.append(value)
+                self.append(_decode_utf8(value))
         else:
             if type(value) == list:
-                self._values = [unicode(val, 'utf-8') for val in value]
+                self._values = map(_decode_utf8, value)
             else:
-                self._values = [unicode(value, 'utf-8')]
+                self._values = [_decode_utf8(value)]
 
-    ## @return Integer
+    ## The number of values set for this attribute
+    #
+    #  @return Integer
     def __len__(self):
-        """
-        The number of values set for this attribute
-        """
         return len(self._values)
 
     ## @returns String
@@ -370,63 +337,66 @@ class LdapAttribute(object):
         # if there's only one item, return it directly
         if len(self._values) == 1:
             return self._values[0].encode("utf-8")
-        return [val.encode("utf-8") for val in self._values]
+        return str([val.encode("utf-8") for val in self._values])
 
-    ## @return String
+    ## unicode value of this attribute
+    #
+    #  @return String
     def __unicode__(self):
-        """
-        unicode value of this attribute
-        """
         # if there's only one item, return it directly
         if len(self._values) == 1:
             return self._values[0]
-        return self._values
+        return unicode(self._values)
 
-    ## @returns the String representation of the object.
+    ## literal representation
+    #
+    #  @returns the String representation of the object.
     def __repr__(self):
-        """
-        literal representation
-        """
-        return "<LdapAttribute: %s=%s>" % (self._name, self.__unicode__())
+        r = u"<LdapAttribute: %s=%s>" % (self._name, self.__unicode__())
+        return r.encode('utf-8')
 
-    ## @param value String the additional value
-    ## @return None
+    ## add an attribute
+    #
+    #  @param value String the additional value
+    #  @return None
     def append(self, value):
-        """
-        add an attribute
-        """
+        value = _decode_utf8(value)
         if not value in self._values:
-            self._values.append(unicode(value, 'utf-8'))
-            self._changes.append((ldap.MOD_ADD, self._name, unicode(value, 'utf-8')))
+            self._values.append(value)
+            self._changes.append((ldap.MOD_ADD, self._name, value))
 
-    ## @param value String the to-be-removed value
-    ## @return None
+    ## remove an attribute
+    #
+    #  @param value String the to-be-removed value
+    #  @return None
     def remove(self, value):
-        """
-        remove an attribute
-        """
-        if str(value) in self._values:
-            self._values.remove(unicode(value, 'utf-8'))
-            self._changes.append((ldap.MOD_DELETE, self._name, unicode(value, 'utf-8')))
+        value = _decode_utf8(value)
+        if value in self._values:
+            self._values.remove(value)
+            self._changes.append((ldap.MOD_DELETE, self._name, value))
 
     ## Membership test operator (<em>in</em> and <em>not in</em>), tests if the attribute contains the @p item.
-    ## @return Boolean
+    #  @return Boolean
     def __contains__(self, item):
+        item = _decode_utf8(item)
         return self._values.__contains__(item)
 
     ## @returns the item identified by @p key
     def __getitem__(self, key):
+        key = _decode_utf8(key)
         return self._values[key]
 
     ## Sets the value of @p key to @p value.
     # @return None
     def __setitem__(self, key, value):
+        key = _decode_utf8(key)
         self._replace_all = True
-        self._values[key] = unicode(value, 'utf-8')
+        self._values[key] = _decode_utf8(value)
 
     ## Deletes the value identified by its @p key
     # @return None
     def __delitem__(self, key):
+        key = _decode_utf8(key)
         self._replace_all = True
         self._values.remove(key)
 
@@ -437,20 +407,16 @@ class LdapAttribute(object):
     ## Sets single @p value, discards all existing ones.
     ## @return None
     def set_value(self, value):
-        """
-        Sets single value, discards all existing ones
-        """
         if type(value) == list:
-            self._values = [unicode(x, 'utf-8') for x in value]
+            self._values = [_decode_utf8(x) for x in value]
         else:
-            self._values = [unicode(value, 'utf-8')]
+            self._values = [_decode_utf8(value)]
         self._replace_all = True
 
-    ## @return Array
+    ## get all changes to this attribute in ldap_modify-syntax
+    #
+    #  @return Array
     def get_change_list(self):
-        """
-        get all changes to this attribute in ldap_modify-syntax
-        """
         if self._replace_all:
             if len(self) == 0:
                 return [(ldap.MOD_DELETE, self._name, None)]
@@ -459,32 +425,26 @@ class LdapAttribute(object):
             return change_list
         return self._changes
 
-    ## @return None
+    ## called when attribute-changes were successfully saved
+    #
+    #  @return None
     def discard_change_list(self):
-        """
-        called when attribute-changes were successfully saved
-        """
         self._changes = []
         self._replace_all = False
 
 
+## Holds an ldap-object represented by the dn (distinguishable name).
+#  attributes are fetched from ldapserver lazily, so you can create objects
+#  without network traffic.
 class LdapNode(object):
-    """
-    Holds an ldap-object represented by the dn (distinguishable name).
-    attributes are fetched from ldapserver lazily, so you can create objects
-    without network traffic.
-    """
 
-    ## Creates the node using the given connection and dn.
+    ## Creates the lazy node object using the given connection and dn.
     # @param conn The connection string
     # @param dn The DN to use
     # @param new default: @e False
     def __init__(self, conn, dn, new=False):
-        """
-        Create lazy Node Object from dn
-        """
         self._conn = conn
-        self._dn = unicode(_encode_utf8(dn), 'utf-8')
+        self._dn = _decode_utf8(dn)
         self._valid = True
         self._to_delete = []
         self._new = new
@@ -496,34 +456,39 @@ class LdapNode(object):
     ## Expose dn as a ready-only property
     dn = property(lambda self: self._dn)
 
+
     ## Get the parent node in the LDAP tree
     def get_parent(self):
-        parent_dn = ','.join(ldap.explode_dn(self._dn)[1:])
+        dn_parts = map(_decode_utf8, ldap.explode_dn(_encode_utf8(self._dn)))
+        parent_dn = u','.join(dn_parts[1:])
         return LdapNode(self._conn, parent_dn)
 
-    ## @return None
-    def retrieve_attributes(self):
-        """Retrieves the node's attributes from the database.
 
-        Attributes are usually loaded lazily (the first time they're accessed),
-        but you can use this method to force this to happen now.
-        """
+    ## Retrieves the node's attributes from the database.
+    #
+    #  Attributes are usually loaded lazily (the first time they're accessed),
+    #  but you can use this method to force this to happen now.
+    #
+    #  @return None
+    def retrieve_attributes(self):
         _dn, attributes_dict = list(self._conn.query(base=self._dn, scope=ldap.SCOPE_BASE))[0]
         self._load_attributes(attributes_dict)
 
-    ## @return None
+    ## Fill node object with attribute values
+    #
+    #  @return None
     def _load_attributes(self, attributes_dict):
         self._attr = dict([
             (attr_name, LdapAttribute(attr_name, attr_values))
                 for attr_name, attr_values in attributes_dict.items()
         ])
 
-    ## @returns the value of the attribute identified by its @p name. Attributes starting with <em>is_*</em> are mapped
-    # to a check, if the objectClass is present.
+    ## get an ldap-attribute
+    #
+    #  @returns the value of the attribute identified by its @p name.
+    #  Attributes starting with <em>is_*</em> are mapped to a check, if the
+    #  objectClass is present.
     def __getattr__(self, name):
-        """
-            get an ldap-attribute
-        """
         if self._attr == None:
             self.retrieve_attributes()
         if name.startswith("is_"):
@@ -535,7 +500,6 @@ class LdapNode(object):
     ## Sets the @p value of the attribute identified by its @p name.
     # @return None
     def __setattr__(self, name, value):
-        "set ldap attribute"
         # handle private attributes the default way
         if name.startswith("_"):
             return object.__setattr__(self, name, value)
@@ -564,14 +528,12 @@ class LdapNode(object):
 
     ## @returns the String representation of the object.
     def __repr__(self):
-        return "<LdapNode: %s>" % self._dn
+        r = u"<LdapNode: %s>" % self._dn
+        return r.encode('utf-8')
 
     ## Saves any changes made to the object.
     ## @return None
     def save(self):
-        """
-        Save any changes to the object
-        """
         if self._attr == None:
             # No changes yet
             return
@@ -594,45 +556,27 @@ class LdapNode(object):
         for attr in self._attr.values():
             attr.discard_change_list()
 
-    ## @return None
+    ## delete this object in ldap
+    #
+    #  @return None
     def delete(self):
-        """
-        delete this object in ldap
-
-        >>> ldap_connection.check_if_dn_exists('cn=jack,dc=example,dc=com')
-        True
-        >>> node = ldap_connection.get_ldap_node('cn=jack,dc=example,dc=com')
-        >>> node.delete()
-        >>> ldap_connection.check_if_dn_exists('cn=jack,dc=example,dc=com')
-        False
-        """
         self._conn.delete(_encode_utf8(self._dn))
         self._valid = False
 
-    ## @return Boolean
-    ## @param password String Password which will be used for authentication
+    ## check password for this ldap-object
+    #
+    #  @return Boolean
+    #  @param password String Password which will be used for authentication
     def check_password(self, password):
-        """
-        check password for this ldap-object
-
-        >>> jack_node.check_password('jack')
-        True
-        >>> jack_node.check_password('wrong_pw')
-        False
-        """
         return self._conn.authenticate( _encode_utf8(self._dn), _encode_utf8(password) )
 
-    ## @return None
-    ## @param password String new password (plain text as hashes are done by the LDAP server)
+    ## set password for this ldap-object immediately
+    #
+    # Issues a LDAP Password Modify Extended Operation
+    #
+    #  @return None
+    #  @param password String new password (plain text as hashes are done by the LDAP server)
     def set_password(self, password):
-        """
-        set password for this ldap-object immediately
-
-        >>> jack_node.set_password('asdfä')
-        >>> jack_node.check_password('asdfä')
-        True
-        """
-        # Issue a LDAP Password Modify Extended Operation
         self._conn.set_password(_encode_utf8(self._dn), _encode_utf8(password))
 
 # vim: ai sw=4 expandtab

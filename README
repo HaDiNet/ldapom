@@ -55,7 +55,7 @@ Search for attributes:
 
     >>> result = lc.search('objectClass=posixAccount')
     >>> list(result)
-    [<LdapNode: cn=daniel,dc=example,dc=com>, <LdapNode: cn=sam,dc=example,dc=com>]
+    [<LdapNode: cn=daniel,dc=example,dc=com>, <LdapNode: cn=Noël,dc=example,dc=com>, <LdapNode: cn=sam,dc=example,dc=com>]
 
 Howto use TLS:
 
