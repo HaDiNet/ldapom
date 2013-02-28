@@ -13,7 +13,7 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(name='ldapom',
-      version='0.9.3',
+      version='0.9.4',
       description='A simple ldap object mapper for python',
       author='Florian Richter',
       author_email='mail@f1ori.de',
