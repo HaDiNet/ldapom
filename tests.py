@@ -168,6 +168,12 @@ class LdapomTest(LdapTest):
         self.assertEqual(u"example", unicode(parent.o))
         self.assertEqual("<LdapNode: dc=com>", repr(parent.get_parent()))
 
+    ## test is_object_class
+    def test_is_object_class(self):
+        node = self.ldap_connection.get_ldap_node('cn=Noël,dc=example,dc=com')
+        self.assertTrue(node.is_posixAccount)
+        self.assertFalse(node.is_windowsAccount)
+
 
 ## Testcase ldapom with unicode-strings
 class LdapomUnicodeTest(LdapomTest):
