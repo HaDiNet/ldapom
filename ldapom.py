@@ -36,7 +36,7 @@ LDAPOM_VERBOSE = False
 
 ## Force a string to be encoded as UTF-8
 def _encode_utf8(string):
-    if string == None:
+    if string is None:
         return None
     elif type(string) == unicode:
         return string.encode('utf-8')
@@ -45,7 +45,7 @@ def _encode_utf8(string):
 
 ## Force a string to be unicode, convert from  UTF-8
 def _decode_utf8(s):
-    if s == None:
+    if s is None:
         return None
     elif type(s) == str:
         return s.decode('utf-8')
@@ -79,7 +79,7 @@ def _retry_on_disconnect_gen(func):
             # try to reconnect
             self._connect()
             gen = func(self, *args, **kws)
-        while 1:
+        while True:
             yield gen.next()
         # return via StopIteration-exception
 
@@ -220,20 +220,19 @@ class LdapConnection(object):
     ## @return string[]
     def query(self, filter="(objectClass=*)", retrieve_attributes=None, base=None,
                 scope=ldap.SCOPE_SUBTREE):
-        if base == None:
+        if base is None:
             base = self._base
         base = _encode_utf8(base)
         if retrieve_attributes:
             retrieve_attributes = map(_encode_utf8, retrieve_attributes)
         filter = _encode_utf8(filter)
         result_id = self._lo.search(base, scope, filter, retrieve_attributes)
-        while 1:
+        while True:
             result_type, result_data = self._lo.result(result_id, self._timeout)
             if (result_data == []):
                 break
-            else:
-                if result_type == ldap.RES_SEARCH_ENTRY:
-                    yield result_data[0]
+            elif result_type == ldap.RES_SEARCH_ENTRY:
+                yield result_data[0]
 
     @_retry_on_disconnect
     ## Change the password of a user.
@@ -490,7 +489,7 @@ class LdapNode(object):
     #  Attributes starting with <em>is_*</em> are mapped to a check, if the
     #  objectClass is present.
     def __getattr__(self, name):
-        if self._attr == None:
+        if self._attr is None:
             self.retrieve_attributes()
         if name.startswith("is_"):
             return name[3:] in self._attr[u'objectClass']
@@ -504,7 +503,7 @@ class LdapNode(object):
         # handle private attributes the default way
         if name.startswith("_"):
             return object.__setattr__(self, name, value)
-        if self._attr == None:
+        if self._attr is None:
             self.retrieve_attributes()
         if name in self._attr:
             self._attr[name].set_value(value)
@@ -514,7 +513,7 @@ class LdapNode(object):
     ## Deletes the attribute identified by its @p name.
     # @return None
     def __delattr__(self, name):
-        if self._attr == None:
+        if self._attr is None:
             self.retrieve_attributes()
         del self._attr[name]
         self._to_delete.append(name)
@@ -535,7 +534,7 @@ class LdapNode(object):
     ## Saves any changes made to the object.
     ## @return None
     def save(self):
-        if self._attr == None:
+        if self._attr is None:
             # No changes yet
             return
         if self._new:
@@ -569,7 +568,7 @@ class LdapNode(object):
     #  @return Boolean
     #  @param password String Password which will be used for authentication
     def check_password(self, password):
-        return self._conn.authenticate( _encode_utf8(self._dn), _encode_utf8(password) )
+        return self._conn.authenticate(_encode_utf8(self._dn), _encode_utf8(password))
 
     ## set password for this LDAP object immediately
     #

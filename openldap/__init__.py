@@ -66,7 +66,7 @@ class LdapServer(object):
 
     ## stop ldap server
     def stop(self):
-        if self.server:
+        if self.server is not None:
             self.server.terminate()
         self.server = None
 
