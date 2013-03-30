@@ -1,5 +1,6 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
+"An LDAP object-mapper"
 
 # Copyright (c) 2010 Florian Richter <mail@f1ori.de>
 #
@@ -87,8 +88,8 @@ def _retry_on_disconnect_gen(func):
 
 ## This Object holds all parameters to connect to an ldapserver
 ## and provide a minimal convenience.
-## Methods marked as internal in the docstring should be used only
-## by this modul.
+## Methods marked as internal in the docstring should only be used
+## by this module.
 ##
 ## Methods for external relevance so far:
 ## * __init__
@@ -104,8 +105,8 @@ class LdapConnection(object):
     ## @param base The Base of the LDAP we are working in
     ## @param login The dn we are authenticating with
     ## @param password The password for the login dn
-    ## @param certfile If using SSL/TLS this is certificate of the server
-    ## @param timelimit Set the timelimit a search request may take
+    ## @param certfile If using SSL/TLS, this is the server's certificate
+    ## @param timelimit Set a limit to the time a search request may take
     def __init__(self, uri, base, login, password, certfile=None, timelimit=30):
         """
         """
@@ -120,7 +121,7 @@ class LdapConnection(object):
         self._login = login
         ## The password for the login dn
         self._password = password
-        ## If using SSL/TLS this is certificate of the server
+        ## If using SSL/TLS, this is the server's certificate
         self._certfile = certfile
         # After storing all information, we connect to the server
         self._connect()
@@ -129,7 +130,7 @@ class LdapConnection(object):
         ## Set timelimit, python-ldap defaults to 30
         ldap.set_option(ldap.OPT_TIMELIMIT, timelimit)
 
-    ## Connect to ldap-server
+    ## Connect to LDAP server
     ##
     ## @return None
     def _connect(self):
@@ -159,7 +160,7 @@ class LdapConnection(object):
             return False
 
     @_retry_on_disconnect
-    ## raw ldap add function
+    ## raw LDAP add function
     ##
     ## @param dn The new/modified dn
     ## @param attrs The added attributes
@@ -168,7 +169,7 @@ class LdapConnection(object):
         self._lo.add_s(dn, attrs)
 
     @_retry_on_disconnect
-    ## raw ldap modify function
+    ## raw LDAP modify function
     ##
     ## @param dn The modified dn
     ## @param change The changed attributes
@@ -190,7 +191,7 @@ class LdapConnection(object):
 
 
     @_retry_on_disconnect
-    ## raw ldap delete function
+    ## raw LDAP delete function
     ##
     ## @param dn The DN of the LDAP node that should be deleted
     ## @return None
@@ -237,7 +238,7 @@ class LdapConnection(object):
     @_retry_on_disconnect
     ## Change the password of a user.
     ##
-    ## This issues a LDAP Password Modify Extended Operation.
+    ## This issues an LDAP Password Modify Extended Operation.
     ##
     ## @param dn The DN of which the password should be changed
     ## @param password The new password
@@ -245,13 +246,13 @@ class LdapConnection(object):
     def set_password(self, dn, password):
         _dn = _encode_utf8(dn)
         _password = _encode_utf8(password)
-        # Issue a LDAP Password Modify Extended Operation
+        # Issue an LDAP Password Modify Extended Operation
         self._lo.passwd_s(_dn, None, _password)
 
     ## Like query(), but wraps each object as an LdapNode.
     ##
-    ## @param args The arguments supplied which will be passed thru to query()
-    ## @param kwargs The keyword arguments supplied which will be passed thru to query()
+    ## @param args The arguments supplied which will be passed through to query()
+    ## @param kwargs The keyword arguments supplied which will be passed through to query()
     ## @return LdapNode[]
     def search(self, *args, **kwargs):
         for dn, attributes_dict in self.query(*args, **kwargs):
@@ -259,7 +260,7 @@ class LdapConnection(object):
             node._load_attributes(attributes_dict)
             yield node
 
-    ## Search ldap-server for dn and return a boolean
+    ## Search LDAP server for dn and return a boolean
     ##
     ## @param dn The DN for which existence should be checked
     ## @return boolean
@@ -274,7 +275,7 @@ class LdapConnection(object):
 
     ## Create lazy LdapNode-Object linked to this connection
     ##
-    ## @param dn The DN of the LDAP node which we would like to have mapped into a LdapNode
+    ## @param dn The DN of the LDAP node which we would like to have mapped into an LdapNode
     ## @return LdapNode
     def get_ldap_node(self, dn):
         return LdapNode(self, dn)
@@ -287,7 +288,7 @@ class LdapConnection(object):
     ##
     ## It will raise ldap.NO_SUCH_OBJECT if the entry cannot be found.
     ##
-    ## @param dn The DN of the LDAP node which we would like to have mapped into a LdapNode
+    ## @param dn The DN of the LDAP node which we would like to have mapped into an LdapNode
     ## @return LdapNode
     def retrieve_ldap_node(self, dn):
         node = LdapNode(self, dn)
@@ -302,13 +303,13 @@ class LdapConnection(object):
         return LdapNode(self, dn, new=True)
 
 
-## Holds a set of LDAP-Attributes with the same name.
+## Holds a set of LDAP Attributes with the same name.
 #
 #  All changes are recorded, so they can be pushed to ldap_modify directly.
 class LdapAttribute(object):
 
     ## Creates a new attribute with the given @p name and @p value. If @p add is @e False (default), the current value
-    # is overwritten, else appended.
+    # is overwritten, otherwise, it is appended.
     def __init__(self, name, value, add=False):
         self._name = _decode_utf8(name)
         self._replace_all = False
@@ -433,9 +434,9 @@ class LdapAttribute(object):
         self._replace_all = False
 
 
-## Holds an ldap-object represented by the dn (distinguishable name).
-#  attributes are fetched from ldapserver lazily, so you can create objects
-#  without network traffic.
+## Holds an LDAP object represented by the dn (distinguishable name).
+#  attributes are fetched from the LDAP server lazily, so you can
+#  create objects without causing network traffic.
 class LdapNode(object):
 
     ## Creates the lazy node object using the given connection and dn.
@@ -483,7 +484,7 @@ class LdapNode(object):
                 for attr_name, attr_values in attributes_dict.items()
         ])
 
-    ## get an ldap-attribute
+    ## get an LDAP attribute
     #
     #  @returns the value of the attribute identified by its @p name.
     #  Attributes starting with <em>is_*</em> are mapped to a check, if the
@@ -556,23 +557,23 @@ class LdapNode(object):
         for attr in self._attr.values():
             attr.discard_change_list()
 
-    ## delete this object in ldap
+    ## delete this object in LDAP
     #
     #  @return None
     def delete(self):
         self._conn.delete(_encode_utf8(self._dn))
         self._valid = False
 
-    ## check password for this ldap-object
+    ## check password for this LDAP object
     #
     #  @return Boolean
     #  @param password String Password which will be used for authentication
     def check_password(self, password):
         return self._conn.authenticate( _encode_utf8(self._dn), _encode_utf8(password) )
 
-    ## set password for this ldap-object immediately
+    ## set password for this LDAP object immediately
     #
-    # Issues a LDAP Password Modify Extended Operation
+    # Issues an LDAP Password Modify Extended Operation
     #
     #  @return None
     #  @param password String new password (plain text as hashes are done by the LDAP server)

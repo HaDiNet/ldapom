@@ -12,7 +12,7 @@ def get_real_path():
     return os.path.realpath(os.path.dirname(__file__))
 
 
-## make path ready for url parameter
+## Make path ready for usage as url parameter
 def get_url_path(path=get_real_path()):
     return path.replace('/', '%2F')
 
