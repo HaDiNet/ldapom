@@ -38,7 +38,7 @@ LDAPOM_VERBOSE = False
 def _encode_utf8(string):
     if string is None:
         return None
-    elif type(string) == unicode:
+    elif isinstance(string, unicode):
         return string.encode('utf-8')
     else:
         return str(string)
@@ -47,7 +47,7 @@ def _encode_utf8(string):
 def _decode_utf8(s):
     if s is None:
         return None
-    elif type(s) == str:
+    elif isinstance(s, str):
         return s.decode('utf-8')
     else:
         return s
@@ -315,13 +315,13 @@ class LdapAttribute(object):
         self._changes = []
         if add:
             self._values = []
-            if type(value) == list:
+            if isinstance(value, list):
                 for v in value:
                     self.append(_decode_utf8(v))
             else:
                 self.append(_decode_utf8(value))
         else:
-            if type(value) == list:
+            if isinstance(value, list):
                 self._values = map(_decode_utf8, value)
             else:
                 self._values = [_decode_utf8(value)]
@@ -407,7 +407,7 @@ class LdapAttribute(object):
     ## Sets single @p value, discards all existing ones.
     ## @return None
     def set_value(self, value):
-        if type(value) == list:
+        if isinstance(value, list):
             self._values = [_decode_utf8(x) for x in value]
         else:
             self._values = [_decode_utf8(value)]
