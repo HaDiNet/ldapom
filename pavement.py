@@ -4,7 +4,7 @@ from paver.easy import task, sh, needs, path
 from paver.setuputils import setup
 
 setup(name='ldapom',
-      version='0.9.2',
+      version='0.9.4',
       description='A simple ldap object mapper for python',
       author='Florian Richter',
       author_email='mail@f1ori.de',
