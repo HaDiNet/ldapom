@@ -471,7 +471,7 @@ class LdapNode(object):
     #
     #  @return None
     def retrieve_attributes(self):
-        _dn, attributes_dict = list(self._conn.query(base=self._dn, scope=ldap.SCOPE_BASE))[0]
+        _dn, attributes_dict = self._conn.query(base=self._dn, scope=ldap.SCOPE_BASE).next()
         self._load_attributes(attributes_dict)
 
     ## Fill node object with attribute values
