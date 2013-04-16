@@ -38,8 +38,8 @@ Playing around:
     >>> node # just show
     <LdapNode: cn=jack,dc=example,dc=com>
     >>> node.sn # show surname
-    <LdapAttribute: sn=O'Niel>
-    >>> node.sn = 'Meier' # change surname
+    [u"O'Niel"]
+    >>> node.sn = ['Meier'] # change surname
     >>> node.save() # save all changes
     >>> node.delete() # delete
 
@@ -47,8 +47,8 @@ Create a new ldap node:
 
     >>> node2 = lc.new_ldap_node('cn=newuser,dc=example,dc=com')
     >>> node2.objectClass = ['person']
-    >>> node2.cn = 'newuser'
-    >>> node2.sn = 'newuser'
+    >>> node2.cn = ['newuser']
+    >>> node2.sn = ['newuser']
     >>> node2.save()
 
 Search for attributes:
