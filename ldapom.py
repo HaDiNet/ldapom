@@ -87,16 +87,22 @@ def _retry_on_disconnect_gen(func):
 
     return new
 
-class LdapType(object):
-    @property
-    def single_value(self):
-        return self._single_value
 
+## basic type information for an LDAP attribute
+#
+# defined by single/multiple and python type
+class LdapBasicType(object):
+    single_value = property(lambda self: self._single_value)
+
+    ## create new type
+    ## @param type python type of attribute
+    ## @param single_value wheather to accept several entries or only one
     def __init__(self, type, single_value):
         self._type = type
         self._single_value = single_value
 
-    def single_decode_from_ldap(self, var):
+    ## decode a single data field from ldap server
+    def _single_decode_from_ldap(self, var):
         if self._type == unicode:
             return var.decode('utf-8')
         if self._type == str:
@@ -106,13 +112,15 @@ class LdapType(object):
         if self._type == bool:
             return var == 'TRUE'
 
+    ## decode data field from ldap server
     def decode_from_ldap(self, var):
         if self.single_value:
-            return self.single_decode_from_ldap(var[0])
+            return self._single_decode_from_ldap(var[0])
         else:
-            return map(self.single_decode_from_ldap, var)
+            return map(self._single_decode_from_ldap, var)
 
-    def single_encode_for_ldap(self, var):
+    ## encode a single value to be sent to the ldap server
+    def _single_encode_for_ldap(self, var):
         if self._type == unicode:
             return var.encode('utf-8') if isinstance(var, unicode) else str(var)
         if self._type == str:
@@ -122,16 +130,19 @@ class LdapType(object):
         if self._type == bool:
             return 'TRUE' if bool(var) else 'FALSE'
 
+    ## encode a value to be sent to the ldap server
     def encode_for_ldap(self, var):
         if self.single_value:
-            return [self.single_encode_for_ldap(var)]
+            return [self._single_encode_for_ldap(var)]
         else:
-            # for convienance, accept single values for multiple value fields
+            # for convenience, accept single values for multiple value fields
             if not isinstance(var, list):
-                return [self.single_encode_for_ldap(var)]
+                return [self._single_encode_for_ldap(var)]
             else:
-                return map(self.single_encode_for_ldap, var)
+                return map(self._single_encode_for_ldap, var)
 
+    ## compose modify commands for ldap server to apply the changes between
+    #  old_attrs and new_attrs
     def get_changes(self, name, old_attrs, new_attrs):
         old_attr = self.encode_for_ldap(old_attrs[name]) if name in old_attrs else []
         new_attr = self.encode_for_ldap(new_attrs[name]) if name in new_attrs else []
@@ -147,6 +158,9 @@ class LdapType(object):
         return change_list
 
 
+## ldap attribute type
+#
+#  a ldap attribute type provided by server
 class LdapAttributeType(object):
     _oid_regex = re.compile(ur'\( ([0-9\.]+) .* \)')
     _single_value_regex = re.compile(ur'\(.* SINGLE-VALUE .*\)')
@@ -156,25 +170,11 @@ class LdapAttributeType(object):
     _desc_regex = re.compile(ur"\(.* DESC \'([^']+)\' .*\)")
     _sup_regex = re.compile(ur"\(.* SUP (\w+) .*\)")
 
-    @property
-    def oid(self):
-        return self._oid
-
-    @property
-    def names(self):
-        return self._names
-
-    @property
-    def single_value(self):
-        return self._single_value
-
-    @property
-    def sup(self):
-        return self._sup
-
-    @property
-    def description(self):
-        return self._description
+    oid = property(lambda self: self._oid)
+    names = property(lambda self: self._names)
+    single_value = property(lambda self: self._single_value)
+    sup = property(lambda self: self._sup)
+    description = property(lambda self: self._description)
 
     def __init__(self, type_str):
         # parse attribute type definition
@@ -194,8 +194,9 @@ class LdapAttributeType(object):
             name_list = self._multiple_names_regex.match(type_str).group(1)
             self._names = [ x.strip(u"'") for x in name_list.split(u" ") ]
 
-    def get_type(self):
-        return {
+    ## resolve oid to basic type
+    def get_ldap_basic_type(self):
+        value_type = {
             '1.3.6.1.1.1.0.0':               str,     # RFC2307 NIS Netgroup Triple
             '1.3.6.1.1.1.0.1':               unicode, # RFC2307 Boot Parameter
             '1.3.6.1.1.16.1':                unicode, # UUID
@@ -240,6 +241,7 @@ class LdapAttributeType(object):
             '1.3.6.1.4.1.1466.115.121.1.54': unicode, # LDAP Syntax Description
             '1.3.6.1.4.1.4203.666.2.7':      str,     # OpenLDAP authz
         }[self._syntax]
+        return LdapBasicType(value_type, self._single_value)
 
 
 ## This Object holds all parameters to connect to an ldapserver
@@ -297,23 +299,27 @@ class LdapConnection(object):
         self._lo.simple_bind_s(_login, _password)
         self._fetch_attribute_types()
 
+    ## fetch all attribute type information from server
+    ## and internal type for name association
     def _fetch_attribute_types(self):
         # to avoid the hen and egg problem, do it the hard way
         result = self._lo.search_s("cn=subschema", ldap.SCOPE_BASE, "(objectClass=*)", ["attributeTypes"])
         if result == None:
             raise Exception("Could not fetch attribute types")
         attribute_types = result[0][1]['attributeTypes']
+        # decode type description and build attribute name -> type object dictionary
         attribute_types_for_name = {}
         for attribute_type in attribute_types:
             t = LdapAttributeType(attribute_type.decode('utf-8'))
             for name in t.names:
                 attribute_types_for_name[name] = t
+        # now resolve inheritance structures and build attribute name -> basic type dictionary
         self._type_for_name = {}
         for name, attribute_type in attribute_types_for_name.items():
             # get parent type
             while attribute_type.sup:
                 attribute_type = attribute_types_for_name[attribute_type.sup]
-            self._type_for_name[name] = LdapType(attribute_type.get_type(), attribute_type.single_value)
+            self._type_for_name[name] = attribute_type.get_ldap_basic_type()
 
     @_retry_on_disconnect
     ## Try to authenticate on a seperate connection to check the (dn, password)
