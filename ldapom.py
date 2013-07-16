@@ -528,7 +528,12 @@ class LDAPEntry(UnicodeMixin, object):
         if name.startswith("is_"):
             return name[3:] in self["objectClass"]
         if name in [attribute.name for attribute in self.attributes]:
-            return [a for a in self.attributes if a.name == name][0]
+            # TODO: Replace this with a check for is_single_value
+            attribute = [a for a in self.attributes if a.name == name][0]
+            if len(attribute.values) == 1:
+                return attribute.value
+            else:
+                return attribute.values
         raise AttributeError()
 
     def __setattr__(self, name, value):

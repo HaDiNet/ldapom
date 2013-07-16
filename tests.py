@@ -2,7 +2,6 @@
 
 from __future__ import unicode_literals
 
-import doctest
 import unittest
 
 import ldapom
@@ -70,8 +69,8 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
         # Verify that the new entry arrived at the server
         entry = self.ldap_connection.get_entry(
                 "cn=sören.pequeño,dc=example,dc=com")
-        self.assertEquals(entry.sn, "Sören Pequeño")
-        self.assertEquals(entry.cn, "sören.pequeño")
+        self.assertEqual(entry.sn, "Sören Pequeño")
+        self.assertEqual(entry.cn, "sören.pequeño")
 
 ## Testcases for ldapom
 class LdapomTest(object):
