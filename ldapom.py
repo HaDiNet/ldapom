@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import unicode_literals
+from __future__ import print_function
 
 import sys
 
@@ -40,6 +41,8 @@ ffi.cdef("""
 #define LDAP_SCOPE_ONELEVEL ...
 #define LDAP_SCOPE_SUBTREE ...
 #define LDAP_SUCCESS ...
+#define LDAP_NO_SUCH_OBJECT ...
+#define LDAP_INVALID_CREDENTIALS ...
 """)
 
 ffi.cdef("int ldap_initialize(LDAP **ldp, char *uri);")
@@ -92,6 +95,16 @@ int ldap_add_ext_s(
        LDAPControl **cctrls );
 """)
 
+# From ldap_modify_ext(3)
+ffi.cdef("""
+int ldap_modify_ext_s(
+              LDAP *ld,
+              char *dn,
+              LDAPMod *mods[],
+              LDAPControl **sctrls,
+              LDAPControl **cctrls );
+""")
+
 # From ldap_err2string(3)
 ffi.cdef("""
 char *ldap_err2string( int err );
@@ -103,6 +116,7 @@ ldap = ffi.verify(
 #include <ldap.h>
 #include <lber.h>
 """, libraries=[str("ldap"), str("lber")])
+
 
 
 def _encode_utf8(unicode_string):
@@ -120,7 +134,14 @@ def _decode_utf8(bytes_obj):
 if sys.version_info[0] >= 3: # Python 3
     unicode = str
 
-class LDAPError(Exception):
+
+class LDAPomError(Exception):
+    pass
+
+class LDAPError(LDAPomError):
+    pass
+
+class LDAPNoSuchObjectError(LDAPError):
     pass
 
 class LDAPInvalidCredentialsError(LDAPError):
@@ -144,8 +165,16 @@ def handle_ldap_error(err):
     :param err: The error code returned by the library.
     :type err: int
     """
-    if err != ldap.LDAP_SUCCESS:
-        raise LDAPError(ldap.ldap_err2string(err))
+    if err == ldap.LDAP_SUCCESS:
+        return
+
+    error_string = _decode_utf8(ffi.string(ldap.ldap_err2string(err)))
+    if err == ldap.LDAP_NO_SUCH_OBJECT:
+        raise LDAPNoSuchObjectError(error_string)
+    elif err == ldap.LDAP_INVALID_CREDENTIALS:
+        raise LDAPInvalidCredentialsError(error_string)
+    else:
+        raise LDAPError(error_string)
 
 
 class LDAPConnection(object):
@@ -198,8 +227,7 @@ class LDAPConnection(object):
         err = ldap.ldap_simple_bind_s(self._ld,
                 _encode_utf8(bind_dn),
                 _encode_utf8(bind_password))
-        if err != ldap.LDAP_SUCCESS:
-            raise LDAPInvalidCredentialsError()
+        handle_ldap_error(err)
 
     def authenticate(self, bind_dn, bind_password):
         """Try to authenticate with the given credentials.
@@ -278,19 +306,28 @@ class LDAPConnection(object):
 
         :rtype: List of LDAPEntry.
         """
-        for dn, attributes_dict in self._raw_search(*args, **kwargs):
-            attributes = []
-            for name, value in attributes_dict.items():
-                # TODO: Create the right type of LDAPAttribute here
-                attributes.append(LDAPAttribute(_decode_utf8(name), value))
-            entry = LDAPEntry(self, dn, attributes=attributes)
-            yield entry
+        try:
+            for dn, attributes_dict in self._raw_search(*args, **kwargs):
+                entry = LDAPEntry(self, dn, attributes=set())
+                for name, value in attributes_dict.items():
+                    # TODO: Create the right type of LDAPAttribute here
+                    entry.attributes.add(LDAPAttribute(_decode_utf8(name),
+                        values_from_ldap=value))
+                yield entry
+        except LDAPNoSuchObjectError:
+            # If the search returned without results, "return" an empty list.
+            return
+
+    def get_entry(self, *args, **kwargs):
+        """Get an LDAPEntry object associated with this connection."""
+        return LDAPEntry(self, *args, **kwargs)
+
 
 
 class LDAPAttribute(UnicodeMixin, object):
     """Holds an LDAP attribute and its values."""
 
-    def __init__(self, name, value=None):
+    def __init__(self, name, values_from_ldap=None):
         """Creates a new attribute.
 
         :param name: The name for the attribute.
@@ -299,9 +336,14 @@ class LDAPAttribute(UnicodeMixin, object):
             values with.
         """
         self.name = name
-        self.value = value or []
+        self._values = (self._convert_values_from_ldap(values_from_ldap)
+                if values_from_ldap else [])
         # List of "old" values to calculate changes from later.
         self._old_values = set(self._values) or set()
+
+    @staticmethod
+    def _convert_values_from_ldap(values_from_ldap):
+        return [_decode_utf8(v) for v in values_from_ldap]
 
     def __len__(self):
         return len(self._values)
@@ -314,7 +356,8 @@ class LDAPAttribute(UnicodeMixin, object):
 
         return "{name}: {values}".format(name=self.name, values=values)
 
-    __repr__ = lambda self: self.__str__()
+    def __repr__(self):
+        return "<LDAPAttribute " + self.__str__() + ">"
 
     def add(self, value):
         """Add an attribute value.
@@ -341,19 +384,28 @@ class LDAPAttribute(UnicodeMixin, object):
     def __iter__(self):
         return iter(self._values)
 
+    def _get_values(self):
+        return frozenset(self._values)
+
+    def _set_values(self, values):
+        self._values = set(values)
+
+    values = property(_get_values, _set_values)
+
     def _get_value(self):
-        if len(self._values) == 1:
-            return next(iter(self._values))
+        if len(self._values) > 1:
+            raise AttributeError("Attribute has more than one value")
+        elif len(self._values) == 0:
+            return None
         else:
-            return frozenset(self._values)
+            return self._values[0]
 
     def _set_value(self, value):
-        if isinstance(value, set) or isinstance(value, list):
-            self._values = set(value)
+        if value is None:
+            self._values = []
         else:
-            self._values = set([value])
+            self._values = [value]
 
-    values = property(_get_value, _set_value)
     value = property(_get_value, _set_value)
 
     def _get_has_changes(self):
@@ -380,11 +432,13 @@ class LDAPEntry(UnicodeMixin, object):
         :type dn: str
         :param attributes: An iterable of attributes for this node.
         """
-        self._connection = connection
-        self._dn = dn
-        self.attributes = set(attributes) if attributes is not None else None
-        self._old_attribute_names = set([a.name for a in attributes]) \
-                if attributes else None
+        # Use super() method because __setattr__ is overridden.
+        super(LDAPEntry, self).__setattr__('_connection', connection)
+        super(LDAPEntry, self).__setattr__('_dn', dn)
+        super(LDAPEntry, self).__setattr__('attributes', set(attributes)
+                if attributes is not None else None)
+        super(LDAPEntry, self).__setattr__('_old_attribute_names',
+                set([a.name for a in attributes]) if attributes else None)
 
     ## Expose dn as a ready-only property
     dn = property(lambda self: self._dn)
@@ -396,46 +450,66 @@ class LDAPEntry(UnicodeMixin, object):
 
     def fetch(self):
         """Fetch the node's attributes from the LDAP server."""
-        entry = next(self._connection.search(base=self.dn,
-                scope=ldap.LDAP_SCOPE_ONELEVEL))
-        self.attributes = entry.attributes
-        self._old_attribute_names = set([a.name for a in self.attributes])
+        try:
+            entry = next(self._connection.search(base=self.dn,
+                    scope=ldap.LDAP_SCOPE_BASE))
+            self.attributes = entry.attributes
+            self._old_attribute_names = set([a.name for a in self.attributes])
+        except StopIteration:
+            self.attributes = set([])
+            self._old_attribute_names = set([])
 
     def save(self):
         """Save the node and its attribute values to the LDAP server."""
+        # Refuse to save if attributes have not been fetched or set explicitly.
+        if self.attributes is None:
+            raise LDAPomError("Cannot save without attributes previously "
+                    "fetched or set.")
+
         # Temporary attribute set that will contain deleted attributes as
         # LDAPAttribute objects without any values.
-        save_attributes = self._attributes.copy()
+        save_attributes = self.attributes.copy()
         deleted_attribute_names = self._old_attribute_names.difference(
                 [a.name for a in self.attributes])
         for name in deleted_attribute_names:
-            save_attributes.add(LDAPAttribute(name, []))
+            save_attributes.add(LDAPAttribute(name))
 
-        mods_p = ffi.new("LDAPMod*[{}]".format(len(save_attributes + 1)))
+        # Keep around references to pointers to owned memory with data that is
+        # still needed.
+        prevent_garbage_collection = []
+
+        mods = ffi.new("LDAPMod*[{}]".format(len(save_attributes) + 1))
         for i, attribute in enumerate(save_attributes):
-            mod = mods_p[i]
+            mod = ffi.new("LDAPMod *")
+            prevent_garbage_collection.append(mod)
 
-            # LDAP_MOD_REPLACE creates the attribute if needed
             mod.mod_op = ldap.LDAP_MOD_REPLACE
-            mod.mod_type = _encode_utf8(attribute.name)
-            mod.mod_next = ffi.NULL
 
-            mod_vals = ffi.new("char*[{}]".format(len(attribute.values) + 1))
+            mod_type = ffi.new("char[]", _encode_utf8(attribute.name))
+            prevent_garbage_collection.append(mod_type)
+            mod.mod_type = mod_type
+
+            modv_strvals = ffi.new("char*[{}]".format(len(attribute.values) + 1))
+            prevent_garbage_collection.append(modv_strvals)
             for j, value in enumerate(attribute.values):
-                mod_vals[j] = _encode_utf8(value)
-            mod_vals[len(attribute.values)] = ffi.NULL
+                strval = ffi.new("char[]", _encode_utf8(value))
+                prevent_garbage_collection.append(strval)
+                modv_strvals[j] = strval
+            modv_strvals[len(attribute.values)] = ffi.NULL
+            mod.mod_vals = {"modv_strvals": modv_strvals}
 
-        mods_p[len(save_attributes)] = ffi.NULL
+            mods[i] = mod
+        mods[len(save_attributes)] = ffi.NULL
 
         if self.exists():
             err = ldap.ldap_modify_ext_s(self._connection._ld,
-                    self.dn,
-                    mods_p,
+                    _encode_utf8(self.dn),
+                    mods,
                     ffi.NULL, ffi.NULL)
         else:
             err = ldap.ldap_add_ext_s(self._connection._ld,
-                    self.dn,
-                    mods_p,
+                    _encode_utf8(self.dn),
+                    mods,
                     ffi.NULL, ffi.NULL)
         handle_ldap_error(err)
 
@@ -454,28 +528,38 @@ class LDAPEntry(UnicodeMixin, object):
         if name.startswith("is_"):
             return name[3:] in self["objectClass"]
         if name in [attribute.name for attribute in self.attributes]:
-            return [a for a in self.attributes if a.name == name]
+            return [a for a in self.attributes if a.name == name][0]
         raise AttributeError()
 
     def __setattr__(self, name, value):
         """Set an attribute value"""
-        try:
+        # Use normal behaviour if setting an existing instance attribute.
+        if name in self.__dict__:
             super(LDAPEntry, self).__setattr__(name, value)
             return
-        except AttributeError:
-            pass
 
         if self.attributes is None:
             self.fetch()
-        try:
-            self[name].value = value
-        except AttributeError:
-            self.attributes.add = LDAPAttribute(name, value)
+
+        if isinstance(value, list) or isinstance(value, set):
+            try:
+                self.name.values = value
+            except AttributeError:
+                new_attribute = LDAPAttribute(name)
+                new_attribute.values = value
+                self.attributes.add(new_attribute)
+        else:
+            try:
+                self.name.value = value
+            except AttributeError:
+                new_attribute = LDAPAttribute(name)
+                new_attribute.value = value
+                self.attributes.add(new_attribute)
 
     def __delattr__(self, name):
         if self.attributes is None:
             self.fetch()
-        attribute = self[name]
+        attribute = getattr(self, name)
         self.attributes.remove(attribute)
 
     def __unicode__(self):

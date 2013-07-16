@@ -1,64 +1,83 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import unittest2 as unittest
+from __future__ import unicode_literals
+
 import doctest
+import unittest
+
 import ldapom
 import openldap
-import ldap
 
-## general testcase class for ldap tests
-##
-## starts ldap and loads testdata
-class LdapTest(unittest.TestCase):
+class LDAPServerMixin(object):
+    """Mixin to set up an LDAPConnection connected to a testing LDAP server.
+    """
     def setUp(self):
         self.ldap_server = openldap.LdapServer()
         self.ldap_server.start()
-        self.ldap_connection = ldapom.LdapConnection(
+        import time; time.sleep(5)
+        self.ldap_connection = ldapom.LDAPConnection(
                 uri=self.ldap_server.ldapi_url(),
                 base='dc=example,dc=com',
-                login='cn=admin,dc=example,dc=com',
-                password='admin'
-        )
+                bind_dn='cn=admin,dc=example,dc=com',
+                bind_password='admin')
 
     def tearDown(self):
         self.ldap_server.stop()
 
 
+class LDAPomTest(LDAPServerMixin, unittest.TestCase):
+
+    def test_init_with_credentials(self):
+        # Test normal instantiation with valid credentials
+        ldapom.LDAPConnection(
+                uri=self.ldap_server.ldapi_url(),
+                base="dc=example,dc=com",
+                bind_dn="cn=Noël,dc=example,dc=com",
+                bind_password="noel")
+
+        # Test with invalid credentials
+        with self.assertRaises(ldapom.LDAPInvalidCredentialsError):
+            ldapom.LDAPConnection(
+                    uri=self.ldap_server.ldapi_url(),
+                    base="dc=example,dc=com",
+                    bind_dn="cn=Noël,dc=example,dc=com",
+                    bind_password="invalid")
+
+    def test_authenticate(self):
+        self.assertTrue(self.ldap_connection.authenticate(
+            bind_dn="cn=Noël,dc=example,dc=com",
+            bind_password="noel"))
+        self.assertFalse(self.ldap_connection.authenticate(
+            bind_dn="cn=Noël,dc=example,dc=com",
+            bind_password="invalid"))
+
+    def test_exists(self):
+        self.assertTrue(self.ldap_connection.get_entry(
+            "cn=jack,dc=example,dc=com").exists())
+        self.assertFalse(self.ldap_connection.get_entry(
+            "cn=nobody,dc=example,dc=com").exists())
+        self.assertFalse(self.ldap_connection.get_entry(
+            "cn=umlautä,dc=example,dc=com").exists())
+
+    def test_create_entry(self):
+        entry = self.ldap_connection.get_entry(
+                "cn=sören.pequeño,dc=example,dc=com")
+        entry.objectClass = ["person", "top"]
+        entry.sn = "Sören Pequeño"
+        entry.cn = "sören.pequeño"
+        entry.save()
+
+        # Verify that the new entry arrived at the server
+        entry = self.ldap_connection.get_entry(
+                "cn=sören.pequeño,dc=example,dc=com")
+        self.assertEquals(entry.sn, "Sören Pequeño")
+        self.assertEquals(entry.cn, "sören.pequeño")
+
 ## Testcases for ldapom
-class LdapomTest(LdapTest):
+class LdapomTest(object):
     ## a function applied to all input strings
     def string_cleaner(self, x):
         return x
-
-    ## test openning of connection to ldap with valid credentials
-    def test_login_normal(self):
-        s = lambda x: self.string_cleaner(x)
-        self.ldap_connection = ldapom.LdapConnection(
-                uri=s(self.ldap_server.ldapi_url()),
-                base=s('dc=example,dc=com'),
-                login=s('cn=Noël,dc=example,dc=com'),
-                password=s('noel')
-        )
-
-    ## test login with invalid credentials
-    def test_login_invalid(self):
-        s = lambda x: self.string_cleaner(x)
-        # test invalid credentials (end password with umlauts)
-        with self.assertRaises(ldap.INVALID_CREDENTIALS):
-            ldapom.LdapConnection(
-                uri = s(self.ldap_server.ldapi_url()),
-                base = s('dc=example,dc=com'),
-                login = s('cn=ädmin,dc=example,dc=com'),
-                password = s('ädmin')
-            )
-
-    ## test check_if_dn_exists
-    def test_exists(self):
-        s = lambda x: self.string_cleaner(x)
-        self.assertTrue(self.ldap_connection.check_if_dn_exists(s('cn=jack,dc=example,dc=com')))
-        self.assertFalse(self.ldap_connection.check_if_dn_exists(s('cn=nobody,dc=example,dc=com')))
-        self.assertFalse(self.ldap_connection.check_if_dn_exists(s('cn=umlautä,dc=example,dc=com')))
 
     ## test rename method
     def test_rename(self):
@@ -171,7 +190,7 @@ class LdapomTest(LdapTest):
 
 
 ## Testcase ldapom with unicode-strings
-class LdapomUnicodeTest(LdapomTest):
+class LdapomUnicodeTest(object):
     ## decode all input strings to unicode strings
     def string_cleaner(self, x):
         return x.decode('utf-8')
@@ -191,7 +210,7 @@ def tear_down(docTest):
 
 def load_tests(loader, tests, ignore):
     #tests.addTests(doctest.DocTestSuite(ldapom, setUp=set_up, tearDown=tear_down))
-    tests.addTests(doctest.DocFileSuite('README', setUp=set_up, tearDown=tear_down))
+    #tests.addTests(doctest.DocFileSuite('README', setUp=set_up, tearDown=tear_down))
     return tests
 
 if __name__ == '__main__':

@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import ldap
 import os.path
 import subprocess
 from subprocess import Popen, check_call
@@ -53,15 +52,15 @@ class LdapServer(object):
              cwd = self.path,
              )
         # Busy wait until LDAP is ready
-        tries = 0
-        while tries < 100:
-            tries += 1
-            try:
-                connection = ldap.initialize(self.ldapi_url())
-                connection.simple_bind_s('cn=admin,dc=example,dc=com', 'admin')
-                break
-            except ldap.SERVER_DOWN:
-                sleep(0.05)
+        #tries = 0
+        #while tries < 100:
+        #    tries += 1
+        #    try:
+        #        connection = ldap.initialize(self.ldapi_url())
+        #        connection.simple_bind_s('cn=admin,dc=example,dc=com', 'admin')
+        #        break
+        #    except ldap.SERVER_DOWN:
+        #        sleep(0.05)
         return
 
     ## stop ldap server
