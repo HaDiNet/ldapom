@@ -521,15 +521,29 @@ class LDAPEntry(UnicodeMixin, object):
             base=self.dn, scope=ldap.LDAP_SCOPE_BASE))
         return len(self_search_result) == 1
 
+    def get_attribute(self, name):
+        """Get a named attribute object from the internal set of attributes.
+
+        :param name: The name of the attribute to get.
+        :type name: str
+        :rtype: LDAPAttribute object or None
+        """
+        try:
+            return [a for a in self.attributes if a.name == name][0]
+        except IndexError:
+            return None
+
     def __getattr__(self, name):
         """Get an attribute or query object class membership"""
         if self.attributes is None:
             self.fetch()
+
         if name.startswith("is_"):
-            return name[3:] in self["objectClass"]
-        if name in [attribute.name for attribute in self.attributes]:
+            return name[3:] in self.get_attribute("objectClass").values
+
+        attribute = self.get_attribute(name)
+        if attribute is not None:
             # TODO: Replace this with a check for is_single_value
-            attribute = [a for a in self.attributes if a.name == name][0]
             if len(attribute.values) == 1:
                 return attribute.value
             else:
@@ -546,25 +560,22 @@ class LDAPEntry(UnicodeMixin, object):
         if self.attributes is None:
             self.fetch()
 
+        # Try to get existing attribute from list, if not found
+        # create a new once.
+        attribute = self.get_attribute(name)
+        if attribute is None:
+            attribute = LDAPAttribute(name)
+            self.attributes.add(attribute)
+
         if isinstance(value, list) or isinstance(value, set):
-            try:
-                self.name.values = value
-            except AttributeError:
-                new_attribute = LDAPAttribute(name)
-                new_attribute.values = value
-                self.attributes.add(new_attribute)
+            attribute.values = value
         else:
-            try:
-                self.name.value = value
-            except AttributeError:
-                new_attribute = LDAPAttribute(name)
-                new_attribute.value = value
-                self.attributes.add(new_attribute)
+            attribute.value = value
 
     def __delattr__(self, name):
         if self.attributes is None:
             self.fetch()
-        attribute = getattr(self, name)
+        attribute = self.get_attribute(name)
         self.attributes.remove(attribute)
 
     def __unicode__(self):
