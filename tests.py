@@ -71,6 +71,13 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
         self.assertEqual(entry.sn, "Sören Pequeño")
         self.assertEqual(entry.cn, "sören.pequeño")
 
+    def test_delete_entry(self):
+        entry = self.ldap_connection.get_entry(
+                "cn=jack,dc=example,dc=com")
+        self.assertTrue(entry.exists())
+        entry.delete()
+        self.assertFalse(entry.exists())
+
     def test_create_attribute(self):
         entry = self.ldap_connection.get_entry(
                 "cn=jack,dc=example,dc=com")

@@ -106,6 +106,11 @@ int ldap_modify_ext_s(
               LDAPControl **cctrls );
 """)
 
+# From ldap_delete_s(3)
+ffi.cdef("""
+int ldap_delete_s(LDAP *ld, char *dn);
+""")
+
 # From ldap_err2string(3)
 ffi.cdef("""
 char *ldap_err2string( int err );
@@ -600,8 +605,7 @@ class LDAPEntry(UnicodeMixin, object):
                     base=self.dn, scope=ldap.LDAP_SCOPE_ONELEVEL)
             for entry in entries_to_delete:
                 entry.delete(recursive=True)
-        ldap.ldap_delete_ext_s(self._connection._ld,
-                _encode_utf8(self.dn))
+        ldap.ldap_delete_s(self._connection._ld, _encode_utf8(self.dn))
 
     def set_password(self, password):
         """Change the password for this LDAP entry.
