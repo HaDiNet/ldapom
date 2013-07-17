@@ -43,6 +43,7 @@ ffi.cdef("""
 #define LDAP_SUCCESS ...
 #define LDAP_NO_SUCH_OBJECT ...
 #define LDAP_INVALID_CREDENTIALS ...
+#define LDAP_SERVER_DOWN ...
 """)
 
 ffi.cdef("int ldap_initialize(LDAP **ldp, char *uri);")
@@ -147,6 +148,9 @@ class LDAPNoSuchObjectError(LDAPError):
 class LDAPInvalidCredentialsError(LDAPError):
     pass
 
+class LDAPServerDownError(LDAPError):
+    pass
+
 class UnicodeMixin(object):
   """Mixin class to handle defining the proper __str__/__unicode__
   methods in Python 2 or 3."""
@@ -173,6 +177,8 @@ def handle_ldap_error(err):
         raise LDAPNoSuchObjectError(error_string)
     elif err == ldap.LDAP_INVALID_CREDENTIALS:
         raise LDAPInvalidCredentialsError(error_string)
+    elif err == ldap.LDAP_SERVER_DOWN:
+        raise LDAPServerDownError(error_string)
     else:
         raise LDAPError(error_string)
 

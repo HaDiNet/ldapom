@@ -13,7 +13,6 @@ class LDAPServerMixin(object):
     def setUp(self):
         self.ldap_server = openldap.LdapServer()
         self.ldap_server.start()
-        import time; time.sleep(5)
         self.ldap_connection = ldapom.LDAPConnection(
                 uri=self.ldap_server.ldapi_url(),
                 base='dc=example,dc=com',
@@ -71,6 +70,29 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
                 "cn=sören.pequeño,dc=example,dc=com")
         self.assertEqual(entry.sn, "Sören Pequeño")
         self.assertEqual(entry.cn, "sören.pequeño")
+
+    def test_create_attribute(self):
+        entry = self.ldap_connection.get_entry(
+                "cn=jack,dc=example,dc=com")
+        entry.description = "Test user"
+        entry.save()
+
+        entry = self.ldap_connection.get_entry(
+                "cn=jack,dc=example,dc=com")
+        entry.fetch()
+        self.assertEqual(entry.description, "Test user")
+
+    def test_delete_attribute(self):
+        entry = self.ldap_connection.get_entry(
+                "cn=jack,dc=example,dc=com")
+        self.assertEqual(entry.loginShell, "/bin/bash")
+        del entry.loginShell
+        entry.save()
+
+        entry = self.ldap_connection.get_entry(
+                "cn=jack,dc=example,dc=com")
+        self.assertRaises(AttributeError, getattr, entry, "loginShell")
+
 
 ## Testcases for ldapom
 class LdapomTest(object):

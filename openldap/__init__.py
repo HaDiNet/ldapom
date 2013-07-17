@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import os.path
-import subprocess
 from subprocess import Popen, check_call
 from time import sleep
+
+import ldapom
 
 
 ## Get absolute path of this module
@@ -52,16 +53,17 @@ class LdapServer(object):
              cwd = self.path,
              )
         # Busy wait until LDAP is ready
-        #tries = 0
-        #while tries < 100:
-        #    tries += 1
-        #    try:
-        #        connection = ldap.initialize(self.ldapi_url())
-        #        connection.simple_bind_s('cn=admin,dc=example,dc=com', 'admin')
-        #        break
-        #    except ldap.SERVER_DOWN:
-        #        sleep(0.05)
-        return
+        tries = 0
+        while tries < 100:
+            tries += 1
+            try:
+                ldapom.LDAPConnection(self.ldapi_url(),
+                        base="dc=example,dc=com",
+                        bind_dn="cn=admin,dc=example,dc=com",
+                        bind_password="admin")
+                return
+            except ldapom.LDAPServerDownError:
+                sleep(0.2)
 
     ## stop ldap server
     def stop(self):
