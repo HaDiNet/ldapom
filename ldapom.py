@@ -235,8 +235,8 @@ class LDAPConnection(object):
                 _encode_utf8(bind_password))
         handle_ldap_error(err)
 
-    def authenticate(self, bind_dn, bind_password):
-        """Try to authenticate with the given credentials.
+    def can_bind(self, bind_dn, bind_password):
+        """Try to bind with the given credentials.
 
         :param bind_dn: DN to bind with.
         :type bind_dn: str
