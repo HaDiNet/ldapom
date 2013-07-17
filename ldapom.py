@@ -456,7 +456,7 @@ class LDAPEntry(UnicodeMixin, object):
 
     def get_parent(self):
         """Get the parent entry in the LDAP tree."""
-        parent_dn = self.dn.split(',')[1:]
+        parent_dn = ",".join(self.dn.split(',')[1:])
         return LDAPEntry(self._connection, parent_dn)
 
     def fetch(self):
