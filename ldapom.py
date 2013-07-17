@@ -9,12 +9,13 @@ from cffi import FFI
 
 ffi = FFI()
 
-ffi.cdef("typedef ... LDAP;")
-ffi.cdef("typedef ... LDAPMessage;")
-ffi.cdef("typedef ... LDAPControl;")
-ffi.cdef("typedef ... BerElement;")
-
+# Type definitions
 ffi.cdef("""
+typedef ... LDAP;
+typedef ... LDAPMessage;
+typedef ... LDAPControl;
+typedef ... BerElement;
+
 typedef struct ldapmod {
     int mod_op;
     char *mod_type;
@@ -46,10 +47,12 @@ ffi.cdef("""
 #define LDAP_SERVER_DOWN ...
 """)
 
-ffi.cdef("int ldap_initialize(LDAP **ldp, char *uri);")
-ffi.cdef("int ldap_set_option(LDAP *ld, int option, const void *invalue);")
-ffi.cdef("int ldap_simple_bind_s(LDAP *ld, const char *who, const char *passwd);")
-ffi.cdef("""int ldap_search_ext_s(
+# Function declarations
+ffi.cdef("""
+int ldap_initialize(LDAP **ldp, char *uri);
+int ldap_set_option(LDAP *ld, int option, const void *invalue);
+int ldap_simple_bind_s(LDAP *ld, const char *who, const char *passwd);
+int ldap_search_ext_s(
        LDAP *ld,
        char *base,
        int scope,
@@ -60,69 +63,58 @@ ffi.cdef("""int ldap_search_ext_s(
        LDAPControl **clientctrls,
        struct timeval *timeout,
        int sizelimit,
-       LDAPMessage **res);""")
+       LDAPMessage **res);
 
-# From ldap_next_entry(3)
-ffi.cdef("""
+// From ldap_next_entry(3)
 int ldap_count_entries( LDAP *ld, LDAPMessage *result );
 LDAPMessage *ldap_first_entry( LDAP *ld, LDAPMessage *result );
 LDAPMessage *ldap_next_entry( LDAP *ld, LDAPMessage *entry );
-""")
 
-# From ldap_get_values(3)
-ffi.cdef("""
+// From ldap_get_values(3)
 char **ldap_get_values(LDAP *ld, LDAPMessage *entry, char *attr);
 int ldap_count_values(char **vals);
-""")
 
-# From ldap_get_dn(3)
-ffi.cdef("""
+// From ldap_get_dn(3)
 char *ldap_get_dn( LDAP *ld, LDAPMessage *entry );
-""")
 
-# From ldap_first_attribute(3)
-ffi.cdef("""
+// From ldap_first_attribute(3)
 char *ldap_first_attribute( LDAP *ld, LDAPMessage *entry, BerElement **berptr );
 char *ldap_next_attribute( LDAP *ld, LDAPMessage *entry, BerElement *ber );
-""")
 
-# From ldap_add_ext(3)
-ffi.cdef("""
+// From ldap_add_ext(3)
 int ldap_add_ext_s(
        LDAP *ld,
        const char *dn,
        LDAPMod **attrs,
        LDAPControl **sctrls,
        LDAPControl **cctrls );
-""")
 
-# From ldap_modify_ext(3)
-ffi.cdef("""
+// From ldap_modify_ext(3)
 int ldap_modify_ext_s(
               LDAP *ld,
               char *dn,
               LDAPMod *mods[],
               LDAPControl **sctrls,
               LDAPControl **cctrls );
-""")
 
-# From ldap_delete_s(3)
-ffi.cdef("""
+// From ldap_delete_s(3)
 int ldap_delete_s(LDAP *ld, char *dn);
-""")
 
-# From ldap_err2string(3)
-ffi.cdef("""
+// From ldap_err2string(3)
 char *ldap_err2string( int err );
-""" )
+
+// From ldap_msgfree(3)
+int ldap_msgfree( LDAPMessage *msg );
+""")
 
 ldap = ffi.verify(
 """
+// Required for ldap_bind_simple
 #define LDAP_DEPRECATED 1
+
 #include <ldap.h>
 #include <lber.h>
 """, libraries=[str("ldap"), str("lber")])
-
 
 
 def _encode_utf8(unicode_string):
@@ -155,6 +147,7 @@ class LDAPInvalidCredentialsError(LDAPError):
 
 class LDAPServerDownError(LDAPError):
     pass
+
 
 class UnicodeMixin(object):
   """Mixin class to handle defining the proper __str__/__unicode__
