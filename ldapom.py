@@ -276,7 +276,8 @@ class LDAPConnection(object):
                 self._ld,
                 _encode_utf8(base or self._base),
                 scope,
-                search_filter or ffi.NULL,
+                (_encode_utf8(search_filter)
+                    if search_filter is not None else ffi.NULL),
                 retrieve_attributes or ffi.NULL,
                 0,
                 ffi.NULL, ffi.NULL,
@@ -319,7 +320,7 @@ class LDAPConnection(object):
         """
         try:
             for dn, attributes_dict in self._raw_search(*args, **kwargs):
-                entry = LDAPEntry(self, dn, attributes=set())
+                entry = LDAPEntry(self, _decode_utf8(dn), attributes=set())
                 for name, value in attributes_dict.items():
                     # TODO: Create the right type of LDAPAttribute here
                     entry.attributes.add(LDAPAttribute(_decode_utf8(name),

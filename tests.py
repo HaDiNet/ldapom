@@ -125,7 +125,7 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
 
     def test_search(self):
         result = self.ldap_connection.search("cn=*n*")
-        self.assertEqual(set(["Noël", "daniel"]), set([r.dn for r in result]))
+        self.assertEqual(set(["Noël", "daniel"]), set([r.cn for r in result]))
 
 
 ## Testcases for ldapom
