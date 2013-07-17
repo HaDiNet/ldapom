@@ -343,8 +343,6 @@ class LDAPAttribute(UnicodeMixin, object):
         self.name = name
         self._values = (self._convert_values_from_ldap(values_from_ldap)
                 if values_from_ldap else [])
-        # List of "old" values to calculate changes from later.
-        self._old_values = set(self._values) or set()
 
     @staticmethod
     def _convert_values_from_ldap(values_from_ldap):
@@ -412,17 +410,6 @@ class LDAPAttribute(UnicodeMixin, object):
             self._values = [value]
 
     value = property(_get_value, _set_value)
-
-    def _get_has_changes(self):
-        return self._old_values != self._values
-
-    def _set_has_changes(self, value):
-        if value:
-            self._old_values = None
-        else:
-            self._old_values = self._values.copy()
-
-    has_changes = property(_get_has_changes, _set_has_changes)
 
 
 class LDAPEntry(UnicodeMixin, object):
