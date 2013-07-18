@@ -458,7 +458,11 @@ class LDAPConnection(object):
             base_classes.append(type_mixin)
 
             base_classes.append(LDAPAttributeBase)
-            attribute_type = type("LDAPAttribute", tuple(base_classes), {})
+            if sys.version_info[0] >= 3: # Python 3
+                attribute_type = type("LDAPAttribute", tuple(base_classes), {})
+            else:
+                attribute_type = type(bytes("LDAPAttribute"),
+                        tuple(base_classes), {})
             for name in type_dict["names"]:
                 self._attribute_type_by_name[name] = attribute_type
 
