@@ -1,29 +1,19 @@
 # -*- coding: utf-8 -*-
 
-from paver.easy import task, sh, needs, path
-from paver.setuputils import setup
-
-setup(name='ldapom',
-      version='0.9.4',
-      description='A simple ldap object mapper for python',
-      author='Florian Richter',
-      author_email='mail@f1ori.de',
-      url='https://github.com/HaDiNet/ldapom',
-      license='MIT',
-      keywords = "ldap object mapper",
-      long_description=path('README').text(),
-      py_modules=['ldapom'],
-     )
-
-@task
-def docs(options):
-    sh('doxygen')
+from paver.easy import *
 
 @task
 def test(options):
-    sh('python tests.py')
+    info("Running tests for Python 2")
+    sh('python2 tests.py')
+    info("Running tests for Python 3")
+    sh('python3 tests.py')
 
 @task
 def coverage(options):
-    sh('coverage run --source ldapom.py ./tests.py')
-    sh('coverage xml')
+    info("Running coverage for Python 2")
+    sh('coverage2 run --source ldapom.py ./tests.py')
+    sh('coverage2 report')
+    info("Running coverage for Python 3")
+    sh('coverage3 run --source ldapom.py ./tests.py')
+    sh('coverage3 report')
