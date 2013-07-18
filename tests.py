@@ -61,15 +61,15 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
         entry = self.ldap_connection.get_entry(
                 "cn=sören.pequeño,dc=example,dc=com")
         entry.objectClass = ["person", "top"]
-        entry.sn = "Sören Pequeño"
-        entry.cn = "sören.pequeño"
+        entry.sn = {"Sören Pequeño"}
+        entry.cn = {"sören.pequeño"}
         entry.save()
 
         # Verify that the new entry arrived at the server
         entry = self.ldap_connection.get_entry(
                 "cn=sören.pequeño,dc=example,dc=com")
-        self.assertEqual(entry.sn, "Sören Pequeño")
-        self.assertEqual(entry.cn, "sören.pequeño")
+        self.assertEqual(entry.sn, {"Sören Pequeño"})
+        self.assertEqual(entry.cn, {"sören.pequeño"})
 
     def test_delete_entry(self):
         entry = self.ldap_connection.get_entry(
@@ -125,7 +125,8 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
 
     def test_search(self):
         result = self.ldap_connection.search("cn=*n*")
-        self.assertEqual(set(["Noël", "daniel"]), set([r.cn for r in result]))
+        self.assertEqual(set(["Noël", "daniel"]),
+                set([next(iter(r.cn)) for r in result]))
 
 
 ## Testcases for ldapom

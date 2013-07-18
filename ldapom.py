@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from __future__ import print_function
 
 import sys
+import re
 
 from cffi import FFI
 
@@ -117,6 +118,16 @@ ldap = ffi.verify(
 """, libraries=[str("ldap"), str("lber")])
 
 
+OID_REGEX = re.compile(r"\( ([0-9\.]+) .* \)")
+SINGLE_VALUE_REGEX = re.compile(r"\(.* SINGLE-VALUE .*\)")
+ONE_NAME_REGEX = re.compile(r"\(.* NAME \'([^']+)\' .*\)")
+MULTIPLE_NAMES_REGEX = re.compile(r"\(.* NAME \( ([^)]+) \) .*\)")
+SYNTAX_REGEX = re.compile(r"\(.* SYNTAX ([0-9\.]+)({\d+})? .*\)")
+DESC_REGEX = re.compile(r"\(.* DESC \'([^']+)\' .*\)")
+SUP_REGEX = re.compile(r"\(.* SUP (\w+) .*\)")
+
+
+
 def _encode_utf8(unicode_string):
   if sys.version_info[0] >= 3: # Python 3
       return bytes(unicode_string, 'utf-8')
@@ -181,6 +192,138 @@ def handle_ldap_error(err):
         raise LDAPError(error_string)
 
 
+class SingleValueAttributeMixin(object):
+    single_value = True
+
+    def _get_value(self):
+        if len(self._values) == 0:
+            return None
+        else:
+            return next(iter(self._values))
+
+    def _set_value(self, value):
+        if value is None:
+            self._values = set()
+        else:
+            self._values = set([value])
+
+    value = property(_get_value, _set_value)
+
+
+class MultiValueAttributeMixin(object):
+    single_value = False
+
+    def _get_values(self):
+        return self._values
+
+    def _set_values(self, values):
+        self._values = set(values)
+
+    values = property(_get_values, _set_values)
+
+
+class LDAPAttributeBase(UnicodeMixin, object):
+    """Holds an LDAP attribute and its values."""
+
+    def __init__(self, name):
+        """Creates a new attribute.
+
+        :param name: The name for the attribute.
+        :param name: str
+        """
+        self.name = name
+        self._values = set()
+
+    def __unicode__(self):
+        if len(self._values) == 1:
+            values_string = unicode(next(iter(self._values)))
+        else:
+            values_string = unicode(", ".join(map(unicode, self._values)))
+        return "{name}: {values}".format(name=self.name, values=values_string)
+
+    def __repr__(self):
+        return "<LDAPAttribute " + self.__str__() + ">"
+
+
+class UnicodeAttributeMixin(object):
+    def _set_ldap_values(self, values):
+        self._values = set([_decode_utf8(v) for v in values])
+
+    def _get_ldap_values(self):
+        return set([_encode_utf8(v) for v in self._values])
+
+
+class BooleanAttributeMixin(object):
+    def _set_ldap_values(self, values):
+        self._values = set([(_decode_utf8(v) == "TRUE") for v in values])
+
+    def _get_ldap_values(self):
+        string_values = ["TRUE" if v else "FALSE" for v in self._values]
+        return set([_encode_utf8(v) for v in string_values])
+
+
+class IntegerAttributeMixin(object):
+    def _set_ldap_values(self, values):
+        self._values = set([int(_decode_utf8(v)) for v in values])
+
+    def _get_ldap_values(self):
+        return set([_encode_utf8(unicode(v)) for v in self._values])
+
+
+class BytesAttributeMixin(object):
+    def _set_ldap_values(self, values):
+        self._values = set(values)
+
+    def _get_ldap_values(self):
+        return set(self._values)
+
+ATTRIBUTE_SYNTAX_TO_TYPE_MIXIN = {
+        '1.3.6.1.1.1.0.0':               BytesAttributeMixin,     # RFC2307 NIS Netgroup Triple
+        '1.3.6.1.1.1.0.1':               UnicodeAttributeMixin, # RFC2307 Boot Parameter
+        '1.3.6.1.1.16.1':                UnicodeAttributeMixin, # UUID
+        '1.3.6.1.4.1.1466.115.121.1.3':  UnicodeAttributeMixin, # Attribute Type Description
+        '1.3.6.1.4.1.1466.115.121.1.4':  BytesAttributeMixin,     # Audio
+        '1.3.6.1.4.1.1466.115.121.1.5':  BytesAttributeMixin,     # Binary
+        '1.3.6.1.4.1.1466.115.121.1.6':  BytesAttributeMixin,     # Bit String
+        '1.3.6.1.4.1.1466.115.121.1.7':  BooleanAttributeMixin,    # Boolean
+        '1.3.6.1.4.1.1466.115.121.1.8':  BytesAttributeMixin,     # Certificate
+        '1.3.6.1.4.1.1466.115.121.1.9':  BytesAttributeMixin,     # Certificate List
+        '1.3.6.1.4.1.1466.115.121.1.10': BytesAttributeMixin,     # Certificate Pair
+        '1.3.6.1.4.1.1466.115.121.1.11': UnicodeAttributeMixin, # CountryString
+        '1.3.6.1.4.1.1466.115.121.1.12': UnicodeAttributeMixin, # Distinguished Name
+        '1.3.6.1.4.1.1466.115.121.1.13': UnicodeAttributeMixin, # Data Quality Syntax
+        '1.3.6.1.4.1.1466.115.121.1.14': UnicodeAttributeMixin, # Delivery Method
+        '1.3.6.1.4.1.1466.115.121.1.15': UnicodeAttributeMixin, # DirectoryString
+        '1.3.6.1.4.1.1466.115.121.1.19': UnicodeAttributeMixin, # DSA Quality Syntax
+        '1.3.6.1.4.1.1466.115.121.1.21': UnicodeAttributeMixin, # Enhanced Guide
+        '1.3.6.1.4.1.1466.115.121.1.22': UnicodeAttributeMixin, # Facsimile Telephone Number
+        '1.3.6.1.4.1.1466.115.121.1.23': BytesAttributeMixin,     # Fax Image Syntax
+        '1.3.6.1.4.1.1466.115.121.1.24': UnicodeAttributeMixin, # GeneralizedTime
+        '1.3.6.1.4.1.1466.115.121.1.25': UnicodeAttributeMixin, # Guide (Obsolete)
+        '1.3.6.1.4.1.1466.115.121.1.26': UnicodeAttributeMixin, # IA5String
+        '1.3.6.1.4.1.1466.115.121.1.27': IntegerAttributeMixin,     # Integer
+        '1.3.6.1.4.1.1466.115.121.1.28': BytesAttributeMixin,     # JPEG
+        '1.3.6.1.4.1.1466.115.121.1.30': UnicodeAttributeMixin, # Matching Rule Description syntax
+        '1.3.6.1.4.1.1466.115.121.1.31': UnicodeAttributeMixin, # Matching Rule Use Description syntax
+        '1.3.6.1.4.1.1466.115.121.1.34': UnicodeAttributeMixin, # Name And Optional UID
+        '1.3.6.1.4.1.1466.115.121.1.36': UnicodeAttributeMixin, # NumericString
+        '1.3.6.1.4.1.1466.115.121.1.37': UnicodeAttributeMixin, # Object Class Description syntax
+        '1.3.6.1.4.1.1466.115.121.1.38': UnicodeAttributeMixin, # OID
+        '1.3.6.1.4.1.1466.115.121.1.39': UnicodeAttributeMixin, # Other Mailbox
+        '1.3.6.1.4.1.1466.115.121.1.40': BytesAttributeMixin,     # OctetString
+        '1.3.6.1.4.1.1466.115.121.1.41': UnicodeAttributeMixin, # PostalAddress
+        '1.3.6.1.4.1.1466.115.121.1.42': UnicodeAttributeMixin, # protocolInformation
+        '1.3.6.1.4.1.1466.115.121.1.43': UnicodeAttributeMixin, # Presentation Address syntax
+        '1.3.6.1.4.1.1466.115.121.1.44': UnicodeAttributeMixin, # PrintableString
+        '1.3.6.1.4.1.1466.115.121.1.49': BytesAttributeMixin,     # Supported Algorithm
+        '1.3.6.1.4.1.1466.115.121.1.50': UnicodeAttributeMixin, # TelephoneNumber
+        '1.3.6.1.4.1.1466.115.121.1.51': UnicodeAttributeMixin, # Teletex Terminal Identifier
+        '1.3.6.1.4.1.1466.115.121.1.52': UnicodeAttributeMixin, # Telex Number
+        '1.3.6.1.4.1.1466.115.121.1.54': UnicodeAttributeMixin, # LDAP Syntax Description
+        '1.3.6.1.4.1.4203.666.2.7':      BytesAttributeMixin,     # OpenLDAP authz
+        }
+
+
 class LDAPConnection(object):
     """Connection to an LDAP server."""
 
@@ -233,6 +376,95 @@ class LDAPConnection(object):
                 _encode_utf8(bind_password))
         handle_ldap_error(err)
 
+        self._fetch_attribute_types()
+
+    def _fetch_attribute_types(self):
+        result = list(
+                self._raw_search(base="cn=subschema",
+                    scope=ldap.LDAP_SCOPE_BASE,
+                    search_filter="(objectClass=*)",
+                    retrieve_attributes=["attributeTypes"]))
+        # Decode the type definitions returned to strings
+        attribute_type_definitions = map(_decode_utf8,
+                result[0][1][_encode_utf8("attributeTypes")])
+
+        attribute_type_dicts = []
+        for type_definition in attribute_type_definitions:
+            type_dict = {}
+
+            sup_match = SUP_REGEX.match(type_definition)
+            if sup_match:
+                type_dict["sup"] = sup_match.group(1)
+
+            desc_match = DESC_REGEX.match(type_definition)
+            if desc_match:
+                type_dict["desc"] = desc_match.group(1)
+
+            oid_match = OID_REGEX.match(type_definition)
+            if oid_match:
+                type_dict["oid"] = oid_match.group(1)
+
+            single_value_match = SINGLE_VALUE_REGEX.match(type_definition)
+            if single_value_match:
+                type_dict["single_value"] = bool(single_value_match)
+
+            one_name_match = ONE_NAME_REGEX.match(type_definition)
+            if one_name_match:
+                names = [one_name_match.group(1)]
+            else:
+                names_string = MULTIPLE_NAMES_REGEX.match(type_definition).group(1)
+                names = [n.strip("'") for n in names_string.split(" ")]
+            type_dict["names"] = names
+
+            syntax_match = SYNTAX_REGEX.match(type_definition)
+            if syntax_match:
+                type_dict["syntax"] = syntax_match.group(1)
+
+            attribute_type_dicts.append(type_dict)
+
+        type_dicts_by_name = {}
+        for type_dict in attribute_type_dicts:
+            for name in type_dict["names"]:
+                type_dicts_by_name[name] = type_dict
+
+        # Resolve inheritance for attribute types
+        resolved_type_dicts = []
+        for type_dict in attribute_type_dicts:
+            # Build a list of ancestors, starting with the leaf
+            ancestors = []
+            current_ancestor = type_dict
+            while current_ancestor is not None:
+                ancestors.append(current_ancestor)
+                current_ancestor = type_dicts_by_name.get(
+                        current_ancestor.get("sup", None), None)
+            # Reverse ancestors, so the root comes first
+            ancestors.reverse()
+            resolved_type_dict = {}
+            for ancestor in ancestors:
+                resolved_type_dict.update(ancestor)
+
+            resolved_type_dicts.append(resolved_type_dict)
+
+        # Build the types for each of the type definitions
+        self._attribute_type_by_name = {}
+        for type_dict in resolved_type_dicts:
+            base_classes = []
+            if type_dict.get("single_value", False):
+                base_classes.append(SingleValueAttributeMixin)
+            else:
+                base_classes.append(MultiValueAttributeMixin)
+
+            type_mixin = ATTRIBUTE_SYNTAX_TO_TYPE_MIXIN[type_dict["syntax"]]
+            base_classes.append(type_mixin)
+
+            base_classes.append(LDAPAttributeBase)
+            attribute_type = type("LDAPAttribute", tuple(base_classes), {})
+            for name in type_dict["names"]:
+                self._attribute_type_by_name[name] = attribute_type
+
+    def get_attribute_type(self, name):
+        return self._attribute_type_by_name[name]
+
     def can_bind(self, bind_dn, bind_password):
         """Try to bind with the given credentials.
 
@@ -265,13 +497,28 @@ class LDAPConnection(object):
         :param scope: The search scope in the LDAP tree
         """
         search_result_p = ffi.new("LDAPMessage **")
+
+        # Keep around references to pointers to owned memory with data that is
+        # still needed.
+        prevent_garbage_collection = []
+
+        if retrieve_attributes is not None:
+            attrs_p = ffi.new("char*[{}]".format(len(retrieve_attributes) + 1))
+            for i, a in enumerate(retrieve_attributes):
+                attr_p = ffi.new("char[]", _encode_utf8(a))
+                prevent_garbage_collection.append(attr_p)
+                attrs_p[i] = attr_p
+            attrs_p[len(retrieve_attributes)] = ffi.NULL
+        else:
+            attrs_p = ffi.NULL
+
         err = ldap.ldap_search_ext_s(
                 self._ld,
                 _encode_utf8(base or self._base),
                 scope,
                 (_encode_utf8(search_filter)
                     if search_filter is not None else ffi.NULL),
-                retrieve_attributes or ffi.NULL,
+                attrs_p,
                 0,
                 ffi.NULL, ffi.NULL,
                 ffi.NULL, # TODO: Implement timeouts
@@ -316,8 +563,10 @@ class LDAPConnection(object):
                 entry = LDAPEntry(self, _decode_utf8(dn), attributes=set())
                 for name, value in attributes_dict.items():
                     # TODO: Create the right type of LDAPAttribute here
-                    entry.attributes.add(LDAPAttribute(_decode_utf8(name),
-                        values_from_ldap=value))
+                    attribute_type = self.get_attribute_type(_decode_utf8(name))
+                    attribute = attribute_type(_decode_utf8(name))
+                    attribute._set_ldap_values(value)
+                    entry.attributes.add(attribute)
                 yield entry
         except LDAPNoSuchObjectError:
             # If the search returned without results, "return" an empty list.
@@ -326,90 +575,6 @@ class LDAPConnection(object):
     def get_entry(self, *args, **kwargs):
         """Get an LDAPEntry object associated with this connection."""
         return LDAPEntry(self, *args, **kwargs)
-
-
-
-class LDAPAttribute(UnicodeMixin, object):
-    """Holds an LDAP attribute and its values."""
-
-    def __init__(self, name, values_from_ldap=None):
-        """Creates a new attribute.
-
-        :param name: The name for the attribute.
-        :param name: str
-        :param value: An iterable or single value to initialize the set of
-            values with.
-        """
-        self.name = name
-        self._values = (self._convert_values_from_ldap(values_from_ldap)
-                if values_from_ldap else [])
-
-    @staticmethod
-    def _convert_values_from_ldap(values_from_ldap):
-        return [_decode_utf8(v) for v in values_from_ldap]
-
-    def __len__(self):
-        return len(self._values)
-
-    def __unicode__(self):
-        if len(self._values) == 1:
-            values = unicode(next(iter(self._values)))
-        else:
-            values = unicode(", ".join(map(unicode, self._values)))
-
-        return "{name}: {values}".format(name=self.name, values=values)
-
-    def __repr__(self):
-        return "<LDAPAttribute " + self.__str__() + ">"
-
-    def add(self, value):
-        """Add an attribute value.
-
-        :param value: The value to append.
-        :type value: str
-        """
-        self._values.add(value)
-
-    def remove(self, value):
-        """Remove an attribute value.
-
-        :param value: The value to be removed.
-        """
-        self._values.remove(value)
-
-    def __contains__(self, value):
-        """Check if a value is in the list of values.
-
-        :rtype: bool
-        """
-        return value in self._values
-
-    def __iter__(self):
-        return iter(self._values)
-
-    def _get_values(self):
-        return frozenset(self._values)
-
-    def _set_values(self, values):
-        self._values = set(values)
-
-    values = property(_get_values, _set_values)
-
-    def _get_value(self):
-        if len(self._values) > 1:
-            raise AttributeError("Attribute has more than one value")
-        elif len(self._values) == 0:
-            return None
-        else:
-            return self._values[0]
-
-    def _set_value(self, value):
-        if value is None:
-            self._values = []
-        else:
-            self._values = [value]
-
-    value = property(_get_value, _set_value)
 
 
 class LDAPEntry(UnicodeMixin, object):
@@ -464,7 +629,8 @@ class LDAPEntry(UnicodeMixin, object):
         deleted_attribute_names = self._old_attribute_names.difference(
                 [a.name for a in self.attributes])
         for name in deleted_attribute_names:
-            save_attributes.add(LDAPAttribute(name))
+            attribute_type = self._connection.get_attribute_type(name)
+            save_attributes.add(attribute_type(name))
 
         # Keep around references to pointers to owned memory with data that is
         # still needed.
@@ -481,13 +647,13 @@ class LDAPEntry(UnicodeMixin, object):
             prevent_garbage_collection.append(mod_type)
             mod.mod_type = mod_type
 
-            modv_strvals = ffi.new("char*[{}]".format(len(attribute.values) + 1))
+            modv_strvals = ffi.new("char*[{}]".format(len(attribute._values) + 1))
             prevent_garbage_collection.append(modv_strvals)
-            for j, value in enumerate(attribute.values):
-                strval = ffi.new("char[]", _encode_utf8(value))
+            for j, value in enumerate(attribute._get_ldap_values()):
+                strval = ffi.new("char[]", value)
                 prevent_garbage_collection.append(strval)
                 modv_strvals[j] = strval
-            modv_strvals[len(attribute.values)] = ffi.NULL
+            modv_strvals[len(attribute._values)] = ffi.NULL
             mod.mod_vals = {"modv_strvals": modv_strvals}
 
             mods[i] = mod
@@ -535,8 +701,7 @@ class LDAPEntry(UnicodeMixin, object):
 
         attribute = self.get_attribute(name)
         if attribute is not None:
-            # TODO: Replace this with a check for is_single_value
-            if len(attribute.values) == 1:
+            if attribute.single_value:
                 return attribute.value
             else:
                 return attribute.values
@@ -556,13 +721,14 @@ class LDAPEntry(UnicodeMixin, object):
         # create a new once.
         attribute = self.get_attribute(name)
         if attribute is None:
-            attribute = LDAPAttribute(name)
+            attribute_type = self._connection.get_attribute_type(name)
+            attribute = attribute_type(name)
             self.attributes.add(attribute)
 
-        if isinstance(value, list) or isinstance(value, set):
-            attribute.values = value
-        else:
+        if attribute.single_value:
             attribute.value = value
+        else:
+            attribute.values = value
 
     def __delattr__(self, name):
         if self.attributes is None:
