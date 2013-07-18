@@ -712,7 +712,12 @@ class LDAPEntry(UnicodeMixin, object):
         raise AttributeError()
 
     def __setattr__(self, name, value):
-        """Set an attribute value"""
+        """Set an attribute value.
+
+        If the attribute is multi-value but the passed value is not a list
+        or set, the value is set as the first and only value of the set of
+        values for this attribute.
+        """
         # Use normal behaviour if setting an existing instance attribute.
         if name in self.__dict__:
             super(LDAPEntry, self).__setattr__(name, value)
@@ -732,7 +737,10 @@ class LDAPEntry(UnicodeMixin, object):
         if attribute.single_value:
             attribute.value = value
         else:
-            attribute.values = value
+            if isinstance(value, (list, set)):
+                attribute.values = value
+            else:
+                attribute.values = {value}
 
     def __delattr__(self, name):
         if self.attributes is None:

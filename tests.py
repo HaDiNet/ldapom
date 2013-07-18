@@ -61,8 +61,8 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
         entry = self.ldap_connection.get_entry(
                 "cn=sören.pequeño,dc=example,dc=com")
         entry.objectClass = ["person", "top"]
-        entry.sn = {"Sören Pequeño"}
-        entry.cn = {"sören.pequeño"}
+        entry.sn = "Sören Pequeño"
+        entry.cn = "sören.pequeño"
         entry.save()
 
         # Verify that the new entry arrived at the server
@@ -87,7 +87,7 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
         entry = self.ldap_connection.get_entry(
                 "cn=jack,dc=example,dc=com")
         entry.fetch()
-        self.assertEqual(entry.description, "Test user")
+        self.assertEqual(entry.description, {"Test user"})
 
     def test_delete_attribute(self):
         entry = self.ldap_connection.get_entry(
@@ -100,7 +100,7 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
                 "cn=jack,dc=example,dc=com")
         self.assertRaises(AttributeError, getattr, entry, "loginShell")
 
-    def test_modify_attribute(self):
+    def test_modify_single_value_attribute(self):
         entry = self.ldap_connection.get_entry(
                 "cn=jack,dc=example,dc=com")
         self.assertEqual(entry.loginShell, "/bin/bash")
@@ -110,6 +110,23 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
         entry = self.ldap_connection.get_entry(
                 "cn=jack,dc=example,dc=com")
         self.assertEqual(entry.loginShell, "/bin/zsh")
+
+    def test_modify_multi_value_attribute(self):
+        entry = self.ldap_connection.get_entry(
+                "cn=jack,dc=example,dc=com")
+        self.assertEqual(entry.loginShell, "/bin/bash")
+        entry.sn = "Jaqueline"
+        entry.save()
+
+        entry = self.ldap_connection.get_entry(
+                "cn=jack,dc=example,dc=com")
+        self.assertEqual(entry.sn, {"Jaqueline"})
+        entry.sn = {"Jaqueline", "Jacky"}
+        entry.save()
+
+        entry = self.ldap_connection.get_entry(
+                "cn=jack,dc=example,dc=com")
+        self.assertEqual(entry.sn, {"Jaqueline", "Jacky"})
 
     def test_object_class_getter(self):
         entry = self.ldap_connection.get_entry(
