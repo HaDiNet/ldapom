@@ -110,6 +110,12 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
         entry = self.ldap_connection.get_entry(
                 "cn=jack,dc=example,dc=com")
         self.assertEqual(entry.loginShell, "/bin/zsh")
+        entry.loginShell = None
+        self.assertEqual(entry.loginShell, None)
+        entry.save()
+
+        entry.fetch()
+        self.assertRaises(AttributeError, getattr, entry, "loginShell")
 
     def test_modify_multi_value_attribute(self):
         entry = self.ldap_connection.get_entry(
