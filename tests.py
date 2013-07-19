@@ -134,11 +134,12 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
         self.assertTrue(entry.is_person)
         self.assertFalse(entry.is_monkey)
 
-    def test_get_parent(self):
+    def test_dn_computed_properties(self):
         entry = self.ldap_connection.get_entry(
                 "cn=daniel,dc=example,dc=com")
-        parent_entry = entry.get_parent()
-        self.assertEqual(parent_entry.dn, "dc=example,dc=com")
+        self.assertEqual(entry.dn, "cn=daniel,dc=example,dc=com")
+        self.assertEqual(entry.parent_dn, "dc=example,dc=com")
+        self.assertEqual(entry.rdn, "cn=daniel")
 
     def test_search(self):
         result = self.ldap_connection.search("cn=*n*")

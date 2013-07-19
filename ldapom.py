@@ -603,11 +603,8 @@ class LDAPEntry(UnicodeMixin, object):
 
     ## Expose dn as a ready-only property
     dn = property(lambda self: self._dn)
-
-    def get_parent(self):
-        """Get the parent entry in the LDAP tree."""
-        parent_dn = ",".join(self.dn.split(',')[1:])
-        return LDAPEntry(self._connection, parent_dn)
+    rdn = property(lambda self: self.dn.split(",")[0])
+    parent_dn = property(lambda self: ",".join(self.dn.split(",")[1:]))
 
     def fetch(self):
         """Fetch the node's attributes from the LDAP server."""
