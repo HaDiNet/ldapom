@@ -146,6 +146,25 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
         self.assertEqual(set(["Noël", "daniel"]),
                 set([next(iter(r.cn)) for r in result]))
 
+    def test_search_empty_result(self):
+        result = self.ldap_connection.search("cn=nobody")
+        self.assertRaises(StopIteration, next, result)
+
+    def test_rename(self):
+        entry = self.ldap_connection.get_entry(
+                "cn=daniel,dc=example,dc=com")
+        entry.rename("cn=dieter,dc=example,dc=com")
+        self.assertTrue(entry.exists())
+
+        entry = self.ldap_connection.get_entry(
+                "cn=daniel,dc=example,dc=com")
+        self.assertFalse(entry.exists())
+
+        entry = self.ldap_connection.get_entry(
+                "cn=dieter,dc=example,dc=com")
+        self.assertTrue(entry.exists())
+        self.assertEqual(entry.cn, {"dieter"})
+
 
 ## Testcases for ldapom
 class LdapomTest(object):
@@ -153,14 +172,6 @@ class LdapomTest(object):
     def string_cleaner(self, x):
         return x
 
-    ## test rename method
-    def test_rename(self):
-        s = lambda x: self.string_cleaner(x)
-        self.assertTrue(self.ldap_connection.check_if_dn_exists(s('cn=Noël,dc=example,dc=com')))
-        self.assertFalse(self.ldap_connection.check_if_dn_exists(s('cn=Noël2,dc=example,dc=com')))
-        self.ldap_connection.rename(s('cn=Noël,dc=example,dc=com'), s('cn=Noël2'))
-        self.assertFalse(self.ldap_connection.check_if_dn_exists(s('cn=Noël,dc=example,dc=com')))
-        self.assertTrue(self.ldap_connection.check_if_dn_exists(s('cn=Noël2,dc=example,dc=com')))
 
     ## test check_password method
     def test_check_password(self):
@@ -175,13 +186,6 @@ class LdapomTest(object):
         node = self.ldap_connection.get_ldap_node(s('cn=Noël,dc=example,dc=com'))
         node.set_password(s('asdfä'))
         self.assertTrue(node.check_password(s('asdfä')))
-
-    ## test searching
-    def test_search(self):
-        s = lambda x: self.string_cleaner(x)
-        result = self.ldap_connection.search(s('cn=*n*'))
-        self.assertEqual("[<LdapNode: cn=daniel,dc=example,dc=com>, <LdapNode: cn=Noël,dc=example,dc=com>]", repr(list(result)))
-
 
 
 if __name__ == '__main__':

@@ -101,6 +101,16 @@ int ldap_modify_ext_s(
 // From ldap_delete_s(3)
 int ldap_delete_s(LDAP *ld, char *dn);
 
+// From ldap_rename_s(3)
+int ldap_rename_s(
+        LDAP *ld,
+        const char *dn,
+        const char *newrdn,
+        const char *newparent,
+        int deleteoldrdn,
+        LDAPControl *sctrls[],
+        LDAPControl *cctrls[]);
+
 // From ldap_err2string(3)
 char *ldap_err2string( int err );
 
@@ -762,6 +772,22 @@ class LDAPEntry(UnicodeMixin, object):
             for entry in entries_to_delete:
                 entry.delete(recursive=True)
         ldap.ldap_delete_s(self._connection._ld, _encode_utf8(self.dn))
+
+    def rename(self, new_dn):
+        new_rdn, new_parent_dn = new_dn.split(",", 1)
+        if new_parent_dn == self.parent_dn:
+            new_parent_dn = None
+
+        err = ldap.ldap_rename_s(self._connection._ld,
+                _encode_utf8(self.dn),
+                _encode_utf8(new_rdn),
+                (_encode_utf8(new_parent_dn)
+                    if new_parent_dn is not None else ffi.NULL),
+                1, # Delete old RDN
+                ffi.NULL, ffi.NULL)
+        handle_ldap_error(err)
+
+        self._dn = new_dn
 
     def set_password(self, password):
         """Change the password for this LDAP entry.
