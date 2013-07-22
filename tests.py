@@ -5,13 +5,13 @@ from __future__ import unicode_literals
 import unittest
 
 import ldapom
-import openldap
+import test_server
 
 class LDAPServerMixin(object):
     """Mixin to set up an LDAPConnection connected to a testing LDAP server.
     """
     def setUp(self):
-        self.ldap_server = openldap.LDAPServer()
+        self.ldap_server = test_server.LDAPServer()
         self.ldap_server.start()
         self.ldap_connection = ldapom.LDAPConnection(
                 uri=self.ldap_server.ldapi_url(),

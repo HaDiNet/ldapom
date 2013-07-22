@@ -1,0 +1,20 @@
+# AUTO-GENERATED FILE - DO NOT EDIT!! Use ldapmodify.
+# CRC32 85f8f71a
+dn: cn=jack
+objectClass: person
+objectClass: posixAccount
+cn: jack
+gidNumber: 11000
+homeDirectory: /home/jack
+sn: O'Niel
+uid: jack
+uidNumber: 11103
+userPassword:: amFjaw==
+loginShell: /bin/bash
+structuralObjectClass: person
+entryUUID: 91744acc-8729-1032-9b3f-9391a99afba3
+creatorsName: cn=admin,dc=example,dc=com
+createTimestamp: 20130722144851Z
+entryCSN: 20130722144851.425929Z#000000#000#000000
+modifiersName: cn=admin,dc=example,dc=com
+modifyTimestamp: 20130722144851Z
