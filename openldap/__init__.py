@@ -1,57 +1,56 @@
 # -*- coding: utf-8 -*-
 
-import os.path
+import os
+import sys
+import time
 from subprocess import Popen, check_call
-from time import sleep
 
 import ldapom
 
+if sys.version_info[0] >= 3: # Python 3
+    unicode = str
 
-## Get absolute path of this module
-def get_real_path():
-    return os.path.realpath(os.path.dirname(__file__))
-
-
-## Make path ready for usage as url parameter
-def get_url_path(path=get_real_path()):
-    return path.replace('/', '%2F')
-
-## Get the absolute path to the default slapd.conf
-def get_default_config_file():
-    return os.path.join(get_real_path(), 'slapd.conf')
+MODULE_PATH = os.path.realpath(os.path.dirname(__file__))
+MODULE_PATH_AS_URL = unicode(MODULE_PATH).replace("/", "%2F")
+DEFAULT_CONFIG_FILE_PATH = os.path.join(MODULE_PATH, "slapd.conf")
 
 
-## Manager for OpenLDAP testing server
-class LdapServer(object):
-    def __init__(self, port=1381, tls_port=1382, config_file=get_default_config_file(), path=get_real_path()):
-        self.server = None
+class LDAPServer(object):
+    """Represents and manages an OpenLDAP server."""
+
+    def __init__(self, port=1381, tls_port=1382, config_file_path=None,
+            working_dir_path=None):
         self.port = port
         self.tls_port = tls_port
-        self.config_file = os.path.realpath(config_file)
-        self.path = path
+        self.config_file_path = config_file_path or DEFAULT_CONFIG_FILE_PATH
+        self.working_dir_path = working_dir_path or MODULE_PATH
 
-    ## destructor
-    def __del__(self):
-        self.stop()
+    ## Load sample data into the LDAP server.
+    def load_data(self, ldif_filename="testdata.ldif"):
+        """Load sample data from an LDIF file in the working directory."""
+        check_call(['rm', '-rf',
+            '{}/ldapdata'.format(self.working_dir_path)])
+        check_call(['mkdir', '-p',
+            '{}/ldapdata'.format(self.working_dir_path)])
+        dev_null = open("/dev/null", "w")
+        check_call(['slapadd',
+            '-l', os.path.join(self.working_dir_path, ldif_filename),
+            '-f', self.config_file_path, '-d', '0'],
+            stdout=dev_null, cwd=self.working_dir_path)
+        dev_null.close()
 
-    ## Reset ldap to ldif_file
-    def load_data(self, ldif_file='testdata.ldif'):
-        check_call(['rm', '-rf', '%s/ldapdata' % self.path])
-        check_call(['mkdir', '-p', '%s/ldapdata' % self.path])
-        check_call(['slapadd', '-l', os.path.join(self.path, ldif_file), '-f', self.config_file, '-d', '0'],
-                stdout = open("/dev/null", "w"), cwd = self.path)
-
-    ## The ldapi://-URL this LDAP server uses
     def ldapi_url(self):
-        return 'ldapi://{0}%2Fldapi'.format(get_url_path(self.path))
+        """The ldapi://-URL of this LDAP server."""
+        return "ldapi://{0}%2Fldapi".format(MODULE_PATH_AS_URL)
 
-    ## start ldap server
     def start(self, clean=True):
+        """Start the LDAP server."""
         if clean:
             self.load_data()
-        self.server = Popen(['slapd', '-f', self.config_file, '-h', self.ldapi_url(), '-d', '0'],
-             cwd = self.path,
-             )
+        self.server_process = Popen(['slapd', 
+            '-f', self.config_file_path,
+            '-h', self.ldapi_url(),
+            '-d', '0'], cwd=self.working_dir_path)
         # Busy wait until LDAP is ready
         tries = 0
         while tries < 100:
@@ -63,16 +62,16 @@ class LdapServer(object):
                         bind_password="admin")
                 return
             except ldapom.LDAPServerDownError:
-                sleep(0.2)
+                time.sleep(0.2)
 
-    ## stop ldap server
     def stop(self):
-        if self.server is not None:
-            self.server.terminate()
+        """ Stop the LDAP server."""
+        if self.server_process is not None:
+            self.server_process.terminate()
         self.server = None
 
-    ## restart ldapserver without clearing the server
     def restart(self):
+        """Restart the LDAP server without clearing all data."""
         self.stop()
         self.start(clean=False)
 
