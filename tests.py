@@ -2,10 +2,14 @@
 
 from __future__ import unicode_literals
 
+import sys
 import unittest
 
 import ldapom
 import test_server
+
+if sys.version_info[0] >= 3: # Python 3
+    unicode = str
 
 class LDAPServerMixin(object):
     """Mixin to set up an LDAPConnection connected to a testing LDAP server.
@@ -170,6 +174,16 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
                 "cn=dieter,dc=example,dc=com")
         self.assertTrue(entry.exists())
         self.assertEqual(entry.cn, {"dieter"})
+
+    def test_attribute_string_representation(self):
+        cn_attr = self.ldap_connection.get_attribute_type("cn")("cn")
+        cn_attr.values = {"günther", }
+        self.assertEqual(unicode(cn_attr), "cn: günther")
+
+        cn_attr.values = {"günther", "gunther"}
+        self.assertTrue(
+                unicode(cn_attr) == "cn: günther, gunther" or
+                unicode(cn_attr) == "cn: gunther, günther")
 
 
 ## Testcases for ldapom
