@@ -41,7 +41,7 @@ class LDAPAttributeBase(compat.UnicodeMixin, object):
         return "{name}: {values}".format(name=self.name, values=values_string)
 
     def __repr__(self):
-        return "<LDAPAttribute " + self.__str__() + ">"
+        return "<LDAPAttribute " + self.name + ">"
 
 
 class SingleValueAttributeMixin(object):

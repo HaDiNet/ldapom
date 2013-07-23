@@ -185,6 +185,8 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
                 unicode(cn_attr) == "cn: günther, gunther" or
                 unicode(cn_attr) == "cn: gunther, günther")
 
+        self.assertEqual(cn_attr.__repr__(), str("<LDAPAttribute cn>"))
+
 
 ## Testcases for ldapom
 class LdapomTest(object):
