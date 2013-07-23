@@ -12,8 +12,8 @@ def test(options):
 @task
 def coverage(options):
     info("Running coverage for Python 2")
-    sh('coverage2 run --source ldapom.py ./tests.py')
+    sh('coverage2 run --source ldapom ./tests.py')
     sh('coverage2 report')
     info("Running coverage for Python 3")
-    sh('coverage3 run --source ldapom.py ./tests.py')
+    sh('coverage3 run --source ldapom ./tests.py')
     sh('coverage3 report')
