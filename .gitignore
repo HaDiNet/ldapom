@@ -7,7 +7,7 @@ MANIFEST
 .settings/
 doxygen.log
 doxygen/
-openldap/ldapdata
+test_server/ldapdata
 ldapom.egg-info/
 htmlcov/
 .coverage
