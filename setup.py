@@ -16,7 +16,7 @@ setup(name='ldapom',
       license='MIT',
       keywords = "ldap object mapper",
       long_description=read('README.md'),
-      py_modules=['ldapom'],
-      ext_modules=[ldapom.ffi.verifier.get_extension()],
+      packages=['ldapom',],
+      ext_modules=[ldapom.connection.ffi.verifier.get_extension()],
      )
 
