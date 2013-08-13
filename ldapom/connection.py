@@ -409,6 +409,11 @@ class LDAPConnection(object):
             attribute_type = self.get_attribute_type(name)
             save_attributes.add(attribute_type(name))
 
+        if not entry.exists():
+            # Don't try to save empty attributes as this fails if the entry
+            # does not exist on the server yet.
+            save_attributes = filter(lambda a: a._values > 0, save_attributes)
+
         # Keep around references to pointers to owned memory with data that is
         # still needed.
         prevent_garbage_collection = []
