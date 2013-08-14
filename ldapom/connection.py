@@ -408,8 +408,8 @@ class LDAPConnection(object):
         # Don't try to save empty attributes as this fails if the entry does
         # not exist on the server yet.
         if not entry_exists:
-            save_attributes = filter(lambda attr: len(attr._values) > 0,
-                    save_attributes)
+            save_attributes = set(filter(lambda attr: len(attr._values) > 0,
+                    save_attributes))
 
         deleted_attribute_names = entry._old_attribute_names.difference(
                 [a.name for a in entry.attributes])

@@ -69,6 +69,15 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
         entry.cn = "sören.pequeño"
         entry.save()
 
+    def test_create_entry_with_empty_attribute(self):
+        entry = self.ldap_connection.get_entry(
+                "cn=sören.pequeño,dc=example,dc=com")
+        entry.objectClass = ["person", "top"]
+        entry.sn = "Sören Pequeño"
+        entry.cn = "sören.pequeño"
+        entry.givenName = []
+        entry.save()
+
         # Verify that the new entry arrived at the server
         entry = self.ldap_connection.get_entry(
                 "cn=sören.pequeño,dc=example,dc=com")
