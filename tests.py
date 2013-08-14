@@ -201,6 +201,11 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
                 "cn=daniel,dc=example,dc=com")
         self.assertRaises(ldapom.LDAPomError, entry.save)
 
+    def test_fetch_nonexistant_entry(self):
+        entry = self.ldap_connection.get_entry(
+                "cn=doesnotexist,dc=example,dc=com")
+        self.assertRaises(ldapom.LDAPNoSuchObjectError, entry.fetch)
+
 
 ## Testcases for ldapom
 class LdapomTest(object):

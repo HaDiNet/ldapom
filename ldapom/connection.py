@@ -470,5 +470,4 @@ class LDAPConnection(object):
             entry.attributes = fetched_entry.attributes
             entry._old_attribute_names = set([a.name for a in entry.attributes])
         except StopIteration:
-            entry.attributes = set([])
-            entry._old_attribute_names = set([])
+            raise error.LDAPNoSuchObjectError()

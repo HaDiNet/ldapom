@@ -25,7 +25,7 @@ class LDAPEntry(compat.UnicodeMixin, object):
         super(LDAPEntry, self).__setattr__('attributes', set(attributes)
                 if attributes is not None else None)
         super(LDAPEntry, self).__setattr__('_old_attribute_names',
-                set([a.name for a in attributes]) if attributes else None)
+                set([a.name for a in attributes]) if attributes else set())
 
     ## Expose dn as a ready-only property
     dn = property(lambda self: self._dn)
@@ -35,6 +35,19 @@ class LDAPEntry(compat.UnicodeMixin, object):
     def fetch(self):
         """Fetch this entry's attributes from the LDAP server."""
         return self._connection.fetch(self)
+
+    def _fetch_attributes_if_exists(self):
+        """Fetch this entry's attributes from the LDAP server if it exists.
+
+        If it doesn't exist, simply use an empty set as attributes.
+        """
+        if self.attributes is not None:
+            return
+
+        if self.exists():
+            self.fetch()
+        else:
+            self.attributes = set()
 
     def exists(self):
         """Checks if this entry exists on the LDAP server."""
@@ -54,8 +67,7 @@ class LDAPEntry(compat.UnicodeMixin, object):
 
     def __getattr__(self, name):
         """Get an attribute or query object class membership"""
-        if self.attributes is None:
-            self.fetch()
+        self._fetch_attributes_if_exists()
 
         if name.startswith("is_"):
             return name[3:] in self.get_attribute("objectClass").values
@@ -80,8 +92,7 @@ class LDAPEntry(compat.UnicodeMixin, object):
             super(LDAPEntry, self).__setattr__(name, value)
             return
 
-        if self.attributes is None:
-            self.fetch()
+        self._fetch_attributes_if_exists()
 
         # Try to get existing attribute from list, if not found
         # create a new once.
@@ -100,8 +111,7 @@ class LDAPEntry(compat.UnicodeMixin, object):
                 attribute.values = {value}
 
     def __delattr__(self, name):
-        if self.attributes is None:
-            self.fetch()
+        self._fetch_attributes_if_exists()
         attribute = self.get_attribute(name)
         self.attributes.remove(attribute)
 
