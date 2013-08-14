@@ -394,9 +394,7 @@ class LDAPConnection(object):
         """Save the given entry and its attribute values to the LDAP server.
 
         :param entry: The entry to save.
-        :type entry: ldapom.LDAPEntry
-        """
-        entry_exists = entry.exists()
+        :type entry: ldapom.LDAPEntry"""
         # Refuse to save if attributes have not been fetched or set explicitly.
         if entry.attributes is None:
             raise error.LDAPomError("Cannot save without attributes "
@@ -405,14 +403,13 @@ class LDAPConnection(object):
         # Temporary attribute set that will contain deleted attributes as
         # LDAPAttribute objects without any values.
         save_attributes = entry.attributes.copy()
-        if entry_exists:
-            deleted_attribute_names = entry._old_attribute_names.difference(
-                    [a.name for a in entry.attributes])
-            for name in deleted_attribute_names:
-                attribute_type = self.get_attribute_type(name)
-                save_attributes.add(attribute_type(name))
+        deleted_attribute_names = entry._old_attribute_names.difference(
+                [a.name for a in entry.attributes])
+        for name in deleted_attribute_names:
+            attribute_type = self.get_attribute_type(name)
+            save_attributes.add(attribute_type(name))
 
-        if not entry_exists:
+        if not entry.exists():
             # Don't try to save empty attributes as this fails if the entry
             # does not exist on the server yet.
             save_attributes = filter(lambda a: a._values > 0, save_attributes)
@@ -444,7 +441,7 @@ class LDAPConnection(object):
             mods[i] = mod
         mods[len(save_attributes)] = ffi.NULL
 
-        if entry_exists:
+        if entry.exists():
             err = ldap.ldap_modify_ext_s(self._ld,
                     compat._encode_utf8(entry.dn),
                     mods,
