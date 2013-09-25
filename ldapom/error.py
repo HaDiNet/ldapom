@@ -22,3 +22,7 @@ class LDAPInvalidCredentialsError(LDAPError):
 
 class LDAPServerDownError(LDAPError):
     pass
+
+
+class LDAPAttributeNameNotFoundError(LDAPomError):
+    pass

@@ -224,7 +224,16 @@ class LDAPConnection(object):
                 attribute_type_definitions)
 
     def get_attribute_type(self, name):
-        return self._attribute_types_by_name[name]
+        """Get the Python type to represent an attribute.
+
+        :param name: The name of the attribute to look up the type for.
+        :type name: str
+        :rtype: a class object, a subclass of ``LDAPAttributeBase``.
+        """
+        if name in self._attribute_types_by_name:
+            return self._attribute_types_by_name[name]
+        else:
+            raise error.LDAPAttributeNameNotFoundError
 
     def can_bind(self, bind_dn, bind_password):
         """Try to bind with the given credentials.
@@ -233,7 +242,7 @@ class LDAPConnection(object):
         :type bind_dn: str
         :param bind_password: Password to bind with.
         :type bind_password: str
-        :rtype boolean
+        :rtype: boolean
         """
         try:
             self.__class__(self._uri, self._base, bind_dn, bind_password,

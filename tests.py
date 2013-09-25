@@ -102,6 +102,12 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
         entry.fetch()
         self.assertEqual(entry.description, {"Test user"})
 
+    def test_create_invalid_attribute_name(self):
+        entry = self.ldap_connection.get_entry(
+                "cn=jack,dc=example,dc=com")
+        with self.assertRaises(ldapom.LDAPAttributeNameNotFoundError):
+            entry.invalidAttribute = 'invalid'
+
     def test_delete_attribute(self):
         entry = self.ldap_connection.get_entry(
                 "cn=jack,dc=example,dc=com")
