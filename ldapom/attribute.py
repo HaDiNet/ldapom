@@ -46,6 +46,7 @@ class LDAPAttributeBase(compat.UnicodeMixin, object):
 
 class SingleValueAttributeMixin(object):
     single_value = True
+    multi_value = False
 
     def _get_value(self):
         if len(self._values) == 0:
@@ -64,6 +65,7 @@ class SingleValueAttributeMixin(object):
 
 class MultiValueAttributeMixin(object):
     single_value = False
+    multi_value = True
 
     def _get_values(self):
         return self._values
