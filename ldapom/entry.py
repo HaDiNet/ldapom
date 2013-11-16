@@ -140,3 +140,12 @@ class LDAPEntry(compat.UnicodeMixin, object):
         :type password: str
         """
         return self._connection.set_password(self, password)
+
+    def can_bind(self, bind_password):
+        """Try to bind with the given credentials.
+
+        :param bind_password: Password to bind with.
+        :type bind_password: str
+        :rtype: boolean
+        """
+        return self._connection.can_bind(self.dn, bind_password)

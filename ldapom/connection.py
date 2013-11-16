@@ -205,7 +205,7 @@ class LDAPConnection(object):
     def search(self, *args, **kwargs):
         """Perform an LDAP search operation.
 
-        :rtype: List of LDAPEntry.
+        :rtype: Iterable of LDAPEntry.
         """
         try:
             for dn, attributes_dict in self._raw_search(*args, **kwargs):
@@ -220,7 +220,7 @@ class LDAPConnection(object):
                     entry.attributes.add(attribute)
                 yield entry
         except error.LDAPNoSuchObjectError:
-            # If the search returned without results, "return" an empty list.
+            # If the search returned without results, "return" an empty generator.
             return
 
     def get_entry(self, *args, **kwargs):

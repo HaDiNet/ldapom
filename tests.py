@@ -53,6 +53,11 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
             bind_dn="cn=Noël,dc=example,dc=com",
             bind_password="invalid"))
 
+    def test_entry_can_bind(self):
+        entry = self.ldap_connection.get_entry("cn=Noël,dc=example,dc=com")
+        self.assertTrue(entry.can_bind("noel"))
+        self.assertFalse(entry.can_bind("invalid"))
+
     def test_exists(self):
         self.assertTrue(self.ldap_connection.get_entry(
             "cn=jack,dc=example,dc=com").exists())
