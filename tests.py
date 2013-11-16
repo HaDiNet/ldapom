@@ -212,6 +212,15 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
                 "cn=doesnotexist,dc=example,dc=com")
         self.assertRaises(ldapom.LDAPNoSuchObjectError, entry.fetch)
 
+    def test_set_password(self):
+        self.assertTrue(self.ldap_connection.can_bind(
+            bind_dn="cn=Noël,dc=example,dc=com",
+            bind_password="noel"))
+        self.ldap_connection.get_entry("cn=Noël,dc=example,dc=com").set_password("new")
+        self.assertTrue(self.ldap_connection.can_bind(
+            bind_dn="cn=Noël,dc=example,dc=com",
+            bind_password="new"))
+
 
 ## Testcases for ldapom
 class LdapomTest(object):

@@ -139,4 +139,4 @@ class LDAPEntry(compat.UnicodeMixin, object):
         :param password: The password to set
         :type password: str
         """
-        raise NotImplementedError()
+        return self._connection.set_password(self, password)

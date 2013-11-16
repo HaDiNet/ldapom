@@ -8,6 +8,7 @@ typedef ... LDAP;
 typedef ... LDAPMessage;
 typedef ... LDAPControl;
 typedef ... BerElement;
+typedef ... berval;
 
 typedef struct ldapmod {
     int mod_op;
@@ -104,6 +105,19 @@ char *ldap_err2string( int err );
 
 // From ldap_msgfree(3)
 int ldap_msgfree( LDAPMessage *msg );
+
+int ldap_passwd_s(
+        LDAP *ld,
+        struct berval        *user,
+        struct berval        *oldpw,
+        struct berval        *newpw,
+        struct berval *newpasswd,
+        LDAPControl **sctrls,
+        LDAPControl **cctrls );
+
+// From lber-types(3)
+struct berval *ber_bvstr(const char *str);
+
 """)
 
 libldap = ffi.verify(

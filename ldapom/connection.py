@@ -359,3 +359,23 @@ class LDAPConnection(object):
             entry._old_attribute_names = set([a.name for a in entry.attributes])
         except StopIteration:
             raise error.LDAPNoSuchObjectError()
+
+    def set_password(self, entry, password):
+        """Set the bind password for an entry.
+
+        :param entry: The entry to set the password for.
+        :type entry: ldapom.LDAPEntry
+        :param password: The password to set.
+        :type password: str
+        """
+        password_p = ffi.new("char[]", compat._encode_utf8(password))
+        password_berval = libldap.ber_bvstr(password_p)
+        entry_dn_p = ffi.new("char[]", compat._encode_utf8(entry.dn))
+        entry_dn_berval = libldap.ber_bvstr(entry_dn_p)
+
+        err = libldap.ldap_passwd_s(self._ld,
+                entry_dn_berval,
+                ffi.NULL,
+                password_berval, password_berval,
+                ffi.NULL, ffi.NULL)
+        handle_ldap_error(err)
