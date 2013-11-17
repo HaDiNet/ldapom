@@ -229,13 +229,13 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
     def test_entry_empty_multi_value_attribute(self):
         entry = self.ldap_connection.get_entry("cn=daniel,dc=example,dc=com")
         del entry.description
-        self.assertItemsEqual([], entry.description)
+        self.assertEqual(set(), entry.description)
 
         # Ensure that saving still works
         entry.description.add('superman')
         entry.save()
         entry = self.ldap_connection.get_entry("cn=daniel,dc=example,dc=com")
-        self.assertItemsEqual(['superman'], entry.description)
+        self.assertEqual({'superman'}, entry.description)
 
 
     def test_entry_nonexistant_single_value_attribute(self):
