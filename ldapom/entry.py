@@ -81,7 +81,8 @@ class LDAPEntry(compat.UnicodeMixin, object):
                 return attribute.values
         else:
             if attribute_type.multi_value:
-                return set()
+                setattr(self, name, set())
+                return self.get_attribute(name).values
             else:
                 raise AttributeError()
 
