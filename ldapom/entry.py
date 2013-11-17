@@ -111,7 +111,7 @@ class LDAPEntry(compat.UnicodeMixin, object):
             attribute.value = value
         else:
             if isinstance(value, (list, set)):
-                attribute.values = value
+                attribute.values = set(value)
             else:
                 attribute.values = {value}
 
