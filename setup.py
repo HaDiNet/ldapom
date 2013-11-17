@@ -1,9 +1,20 @@
 # -*- coding: utf-8 -*-
 
 import os
-from distutils.core import setup
+from setuptools import setup
+from distutils.command.build import build
 
-import ldapom
+class cffi_build(build):
+    """This is a shameful hack to ensure that cffi is present when
+    we specify ext_modules. We can't do this eagerly because
+    setup_requires hasn't run yet.
+
+    Copied from https://github.com/xattr/xattr
+    """
+    def finalize_options(self):
+        import ldapom
+        self.distribution.ext_modules = [ldapom.connection.ffi.verifier.get_extension()]
+        build.finalize_options(self)
 
 # Utility function to read the README file.
 def read(fname):
@@ -17,6 +28,9 @@ setup(name='ldapom',
       keywords = "ldap object mapper",
       long_description=read('README.md'),
       packages=['ldapom',],
-      ext_modules=[ldapom.connection.ffi.verifier.get_extension()],
+      install_requires=['cffi'],
+      setup_requires=['cffi'],
+      zip_safe=False,
+      cmdclass={'build': cffi_build},
      )
 
