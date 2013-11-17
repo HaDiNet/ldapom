@@ -226,6 +226,17 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
             bind_dn="cn=Noël,dc=example,dc=com",
             bind_password="new"))
 
+    def test_entry_empty_multi_value_attribute(self):
+        entry = self.ldap_connection.get_entry("cn=daniel,dc=example,dc=com")
+        del entry.mailAlias
+        self.assertItemsEqual(set(), entry.mailAlias)
+
+    def test_entry_nonexistant_single_value_attribute(self):
+        entry = self.ldap_connection.get_entry("cn=daniel,dc=example,dc=com")
+        del entry.loginShell
+        with self.assertRaises(AttributeError):
+            entry.loginShell
+
 
 ## Testcases for ldapom
 class LdapomTest(object):

@@ -72,13 +72,18 @@ class LDAPEntry(compat.UnicodeMixin, object):
         if name.startswith("is_"):
             return name[3:] in self.get_attribute("objectClass").values
 
+        attribute_type = self._connection.get_attribute_type(name)
         attribute = self.get_attribute(name)
         if attribute is not None:
             if attribute.single_value:
                 return attribute.value
             else:
                 return attribute.values
-        raise AttributeError()
+        else:
+            if attribute_type.multi_value:
+                return set()
+            else:
+                raise AttributeError()
 
     def __setattr__(self, name, value):
         """Set an attribute value.
