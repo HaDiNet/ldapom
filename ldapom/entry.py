@@ -119,7 +119,8 @@ class LDAPEntry(compat.UnicodeMixin, object):
     def __delattr__(self, name):
         self._fetch_attributes_if_exists()
         attribute = self.get_attribute(name)
-        self.attributes.remove(attribute)
+        if attribute is not None:
+            self.attributes.remove(attribute)
 
     def __unicode__(self):
         return self.dn
