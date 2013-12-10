@@ -21,7 +21,7 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(name='ldapom',
-      version='0.10.0',
+      version='0.10.1',
       description='A pythonic LDAP to Python object mapper',
       url='https://github.com/leonhandreke/ldapom',
       license='MIT',
