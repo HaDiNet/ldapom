@@ -41,12 +41,52 @@ def handle_ldap_error(err):
         raise error.LDAPError(error_string)
 
 
+def _retry_reconnect(func):
+    def func_wrapper(lc, *args, **kwargs):
+        retry_count = 0
+        while True:
+            try:
+                return func(lc, *args, **kwargs)
+                break
+            except error.LDAPServerDownError:
+                if retry_count >= lc._max_retry_reconnect:
+                    raise
+
+                retry_count += 1
+                try:
+                    lc._connect()
+                except error.LDAPServerDownError:
+                    pass
+
+
+    return func_wrapper
+
+def _retry_reconnect_generator(func):
+    def generator_wrapper(lc, *args, **kwargs):
+        retry_count = 0
+        while True:
+            try:
+                g = func(lc, *args, **kwargs)
+                for v in g:
+                    yield v
+                break
+            except error.LDAPServerDownError:
+                if retry_count >= lc._max_retry_reconnect:
+                    raise
+
+                retry_count += 1
+                try:
+                    lc._connect()
+                except error.LDAPServerDownError:
+                    pass
+    return generator_wrapper
+
 class LDAPConnection(object):
     """Connection to an LDAP server."""
 
     def __init__(self, uri, base, bind_dn, bind_password,
             cacertfile=None, require_cert=LDAP_OPT_X_TLS_NEVER,
-            timelimit=30):
+            timelimit=30, max_retry_reconnect=5):
         """
         :param uri: URI of the server to connect to.
         :param base: Base DN for LDAP operations.
@@ -61,9 +101,15 @@ class LDAPConnection(object):
         self._bind_dn = bind_dn
         self._bind_password = bind_password
         self._cacertfile = cacertfile
+        self._require_cert = require_cert
+        self._max_retry_reconnect = max_retry_reconnect
+        self._timelimit = timelimit
 
+        self._connect()
+
+    def _connect(self):
         ld_p = ffi.new("LDAP **")
-        err = libldap.ldap_initialize(ld_p, compat._encode_utf8(uri))
+        err = libldap.ldap_initialize(ld_p, compat._encode_utf8(self._uri))
         handle_ldap_error(err)
         self._ld = ld_p[0]
 
@@ -71,12 +117,12 @@ class LDAPConnection(object):
         version_p[0] = libldap.LDAP_VERSION3
         libldap.ldap_set_option(self._ld, libldap.LDAP_OPT_PROTOCOL_VERSION, version_p)
 
-        if cacertfile:
+        if self._cacertfile is not None:
             libldap.ldap_set_option(self._ld, libldap.LDAP_OPT_X_TLS_CACERTFILE,
-                    compat._encode_utf8(cacertfile))
+                    compat._encode_utf8(self._cacertfile))
 
         require_cert_p = ffi.new("int *")
-        require_cert_p[0] = require_cert
+        require_cert_p[0] = self._require_cert
         libldap.ldap_set_option(self._ld, libldap.LDAP_OPT_X_TLS_REQUIRE_CERT,
                 require_cert_p);
 
@@ -86,12 +132,12 @@ class LDAPConnection(object):
         libldap.ldap_set_option(self._ld, libldap.LDAP_OPT_X_TLS_NEWCTX, newctx_p)
 
         timelimit_p = ffi.new("int *")
-        timelimit_p[0] = timelimit
+        timelimit_p[0] = self._timelimit
         libldap.ldap_set_option(self._ld, libldap.LDAP_OPT_TIMELIMIT, timelimit_p)
 
         err = libldap.ldap_simple_bind_s(self._ld,
-                compat._encode_utf8(bind_dn),
-                compat._encode_utf8(bind_password))
+                compat._encode_utf8(self._bind_dn),
+                compat._encode_utf8(self._bind_password))
         handle_ldap_error(err)
 
         self._fetch_attribute_types()
@@ -121,6 +167,7 @@ class LDAPConnection(object):
         else:
             raise error.LDAPAttributeNameNotFoundError
 
+    @_retry_reconnect
     def can_bind(self, bind_dn, bind_password):
         """Try to bind with the given credentials.
 
@@ -209,11 +256,16 @@ class LDAPConnection(object):
             current_entry = libldap.ldap_next_entry(self._ld, current_entry)
             # TODO: Call ldap_msgfree on search_result
 
+    @_retry_reconnect_generator
     def search(self, *args, **kwargs):
         """Perform an LDAP search operation.
 
         :rtype: Iterable of LDAPEntry.
         """
+        return self._search(*args, **kwargs)
+
+    def _search(self, *args, **kwargs):
+        """Search without retry_reconnect."""
         try:
             for dn, attributes_dict in self._raw_search(*args, **kwargs):
                 entry = LDAPEntry(self, compat._decode_utf8(dn),
@@ -234,6 +286,7 @@ class LDAPConnection(object):
         """Get an LDAPEntry object associated with this connection."""
         return LDAPEntry(self, *args, **kwargs)
 
+    @_retry_reconnect
     def delete(self, entry, recursive=False):
         """Delete an entry on the LDAP server.
 
@@ -243,7 +296,7 @@ class LDAPConnection(object):
         :type recursive: bool
         """
         if recursive:
-            entries_to_delete = self._connection.search(
+            entries_to_delete = self._connection._search(
                     base=entry.dn,
                     scope=LDAP_SCOPE_ONELEVEL)
             for entry in entries_to_delete:
@@ -252,6 +305,7 @@ class LDAPConnection(object):
                 compat._encode_utf8(entry.dn))
         handle_ldap_error(err)
 
+    @_retry_reconnect
     def rename(self, entry, new_dn):
         """Rename an entry on the LDAP server.
 
@@ -275,16 +329,18 @@ class LDAPConnection(object):
 
         entry._dn = new_dn
 
+    @_retry_reconnect
     def exists(self, entry):
         """Checks if a the given entry exists on the LDAP server.
 
         :param entry: The entry to check the existence of.
         :type entry: ldapom.LDAPEntry
         """
-        entry_search_result = list(self.search(
+        entry_search_result = list(self._search(
             base=entry.dn, scope=LDAP_SCOPE_BASE))
         return len(entry_search_result) == 1
 
+    @_retry_reconnect
     def save(self, entry):
         """Save the given entry and its attribute values to the LDAP server.
 
@@ -353,6 +409,7 @@ class LDAPConnection(object):
 
         entry._old_attribute_names = set([a.name for a in entry.attributes])
 
+    @_retry_reconnect
     def fetch(self, entry):
         """Fetch an entry's attributes from the LDAP server.
 
@@ -360,13 +417,14 @@ class LDAPConnection(object):
         :type entry: ldapom.LDAPEntry
         """
         try:
-            fetched_entry = next(self.search(base=entry.dn,
+            fetched_entry = next(self._search(base=entry.dn,
                 scope=libldap.LDAP_SCOPE_BASE))
             entry.attributes = fetched_entry.attributes
             entry._old_attribute_names = set([a.name for a in entry.attributes])
         except StopIteration:
             raise error.LDAPNoSuchObjectError()
 
+    @_retry_reconnect
     def set_password(self, entry, password):
         """Set the bind password for an entry.
 
