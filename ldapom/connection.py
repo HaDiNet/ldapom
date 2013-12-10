@@ -14,6 +14,12 @@ LDAP_SCOPE_BASE = libldap.LDAP_SCOPE_BASE
 LDAP_SCOPE_SUBTREE = libldap.LDAP_SCOPE_SUBTREE
 LDAP_SCOPE_ONELEVEL = libldap.LDAP_SCOPE_ONELEVEL
 
+LDAP_OPT_X_TLS_NEVER = libldap.LDAP_OPT_X_TLS_NEVER
+LDAP_OPT_X_TLS_HARD = libldap.LDAP_OPT_X_TLS_HARD
+LDAP_OPT_X_TLS_DEMAND = libldap.LDAP_OPT_X_TLS_DEMAND
+LDAP_OPT_X_TLS_ALLOW = libldap.LDAP_OPT_X_TLS_ALLOW
+LDAP_OPT_X_TLS_TRY = libldap.LDAP_OPT_X_TLS_TRY
+
 
 def handle_ldap_error(err):
     """Given an LDAP error code, raise an error if needed.
@@ -39,7 +45,8 @@ class LDAPConnection(object):
     """Connection to an LDAP server."""
 
     def __init__(self, uri, base, bind_dn, bind_password,
-            cacertfile=None, timelimit=30):
+            cacertfile=None, require_cert=LDAP_OPT_X_TLS_NEVER,
+            timelimit=30):
         """
         :param uri: URI of the server to connect to.
         :param base: Base DN for LDAP operations.
@@ -65,13 +72,13 @@ class LDAPConnection(object):
         libldap.ldap_set_option(self._ld, libldap.LDAP_OPT_PROTOCOL_VERSION, version_p)
 
         if cacertfile:
-            require_cert_p = ffi.new("int *")
-            require_cert_p[0] = libldap.LDAP_OPT_X_TLS_NEVER
-            libldap.ldap_set_option(self._ld, libldap.LDAP_OPT_X_TLS_REQUIRE_CERT,
-                    require_cert_p);
-
             libldap.ldap_set_option(self._ld, libldap.LDAP_OPT_X_TLS_CACERTFILE,
                     compat._encode_utf8(cacertfile))
+
+        require_cert_p = ffi.new("int *")
+        require_cert_p[0] = require_cert
+        libldap.ldap_set_option(self._ld, libldap.LDAP_OPT_X_TLS_REQUIRE_CERT,
+                require_cert_p);
 
         # For TLS options to take effect, a context refresh seems to be needed.
         newctx_p = ffi.new("int *")
