@@ -7,7 +7,7 @@ from __future__ import print_function
 from ldapom.cdef import libldap, ffi
 from ldapom import attribute
 from ldapom import compat
-from ldapom.entry import LDAPEntry, _AttributeStatus
+from ldapom.entry import LDAPEntry
 from ldapom import error
 
 LDAP_SCOPE_BASE = libldap.LDAP_SCOPE_BASE
@@ -165,8 +165,7 @@ class LDAPConnection(object):
         if name in self._attribute_types_by_name:
             return self._attribute_types_by_name[name]
         else:
-            raise error.LDAPAttributeNameNotFoundError(
-                    'Attribute type "{}" not found.'.format(name))
+            raise error.LDAPAttributeNameNotFoundError
 
     @_retry_reconnect
     def can_bind(self, bind_dn, bind_password):
@@ -269,14 +268,15 @@ class LDAPConnection(object):
         """Search without retry_reconnect."""
         try:
             for dn, attributes_dict in self._raw_search(*args, **kwargs):
-                entry = LDAPEntry(self, compat._decode_utf8(dn))
-                entry._attributes = set()
+                entry = LDAPEntry(self, compat._decode_utf8(dn),
+                        attributes=set())
                 for name, value in attributes_dict.items():
+                    # TODO: Create the right type of LDAPAttribute here
                     attribute_type = self.get_attribute_type(
                             compat._decode_utf8(name))
                     attribute = attribute_type(compat._decode_utf8(name))
                     attribute._set_ldap_values(value)
-                    entry._attributes.add(attribute)
+                    entry.attributes.add(attribute)
                 yield entry
         except error.LDAPNoSuchObjectError:
             # If the search returned without results, "return" an empty generator.
@@ -348,24 +348,25 @@ class LDAPConnection(object):
         :type entry: ldapom.LDAPEntry
         """
         entry_exists = entry.exists()
+        # Refuse to save if attributes have not been fetched or set explicitly.
+        if entry.attributes is None:
+            raise error.LDAPomError("Cannot save without attributes "
+                    "previously fetched or set.")
 
-        # Temporary attribute set that will contain attributes to be saved.
-        save_attributes = set()
-
-        for name, status in entry._attribute_status.items():
-            if status == _AttributeStatus.CHANGED:
-                changed_attribute = entry.get_attribute(name)
-                assert changed_attribute is not None
-                save_attributes.add(changed_attribute)
-            elif status == _AttributeStatus.DELETED:
-                attribute_type = self.get_attribute_type(name)
-                save_attributes.add(attribute_type(name))
-
+        # Temporary attribute set that will contain deleted attributes as
+        # LDAPAttribute objects without any values.
+        save_attributes = entry.attributes.copy()
         # Don't try to save empty attributes as this fails if the entry does
         # not exist on the server yet.
         if not entry_exists:
             save_attributes = set(filter(lambda attr: len(attr._values) > 0,
                     save_attributes))
+
+        deleted_attribute_names = entry._old_attribute_names.difference(
+                [a.name for a in entry.attributes])
+        for name in deleted_attribute_names:
+            attribute_type = self.get_attribute_type(name)
+            save_attributes.add(attribute_type(name))
 
         # Keep around references to pointers to owned memory with data that is
         # still needed.
@@ -406,7 +407,7 @@ class LDAPConnection(object):
                     ffi.NULL, ffi.NULL)
         handle_ldap_error(err)
 
-        entry._attribute_status = {}
+        entry._old_attribute_names = set([a.name for a in entry.attributes])
 
     @_retry_reconnect
     def fetch(self, entry):
@@ -418,7 +419,8 @@ class LDAPConnection(object):
         try:
             fetched_entry = next(self._search(base=entry.dn,
                 scope=libldap.LDAP_SCOPE_BASE))
-            entry._attributes = fetched_entry._attributes
+            entry.attributes = fetched_entry.attributes
+            entry._old_attribute_names = set([a.name for a in entry.attributes])
         except StopIteration:
             raise error.LDAPNoSuchObjectError()
 

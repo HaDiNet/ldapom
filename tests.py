@@ -207,6 +207,11 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
 
         self.assertEqual(cn_attr.__repr__(), str("<LDAPAttribute cn>"))
 
+    def test_entry_save_without_fetch(self):
+        entry = self.ldap_connection.get_entry(
+                "cn=daniel,dc=example,dc=com")
+        self.assertRaises(ldapom.LDAPomError, entry.save)
+
     def test_fetch_nonexistant_entry(self):
         entry = self.ldap_connection.get_entry(
                 "cn=doesnotexist,dc=example,dc=com")
