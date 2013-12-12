@@ -10,22 +10,19 @@ from ldapom import compat
 class LDAPEntry(compat.UnicodeMixin, object):
     """Lazy-loading LDAP entry object."""
 
-    def __init__(self, connection, dn, attributes=None):
+    def __init__(self, connection, dn):
         """Creates a lazy entry object by dn.
 
         :param connection: The connection to use for this node.
         :type connection: LdapConnection
         :param dn: The DN for this node.
         :type dn: str
-        :param attributes: An iterable of attributes for this node.
         """
         # Use super() method because __setattr__ is overridden.
         super(LDAPEntry, self).__setattr__('_connection', connection)
         super(LDAPEntry, self).__setattr__('_dn', dn)
-        super(LDAPEntry, self).__setattr__('attributes', set(attributes)
-                if attributes is not None else None)
-        super(LDAPEntry, self).__setattr__('_old_attribute_names',
-                set([a.name for a in attributes]) if attributes else set())
+        super(LDAPEntry, self).__setattr__('_attributes', None)
+        super(LDAPEntry, self).__setattr__('_old_attribute_names', set())
 
     ## Expose dn as a ready-only property
     dn = property(lambda self: self._dn)
@@ -41,13 +38,13 @@ class LDAPEntry(compat.UnicodeMixin, object):
 
         If it doesn't exist, simply use an empty set as attributes.
         """
-        if self.attributes is not None:
+        if self._attributes is not None:
             return
 
         if self.exists():
             self.fetch()
         else:
-            self.attributes = set()
+            self._attributes = set()
 
     def exists(self):
         """Checks if this entry exists on the LDAP server."""
@@ -61,7 +58,7 @@ class LDAPEntry(compat.UnicodeMixin, object):
         :rtype: LDAPAttribute object or None
         """
         try:
-            return [a for a in self.attributes if a.name == name][0]
+            return [a for a in self._attributes if a.name == name][0]
         except IndexError:
             return None
 
@@ -106,7 +103,7 @@ class LDAPEntry(compat.UnicodeMixin, object):
         if attribute is None:
             attribute_type = self._connection.get_attribute_type(name)
             attribute = attribute_type(name)
-            self.attributes.add(attribute)
+            self._attributes.add(attribute)
 
         if attribute.single_value:
             attribute.value = value
@@ -120,7 +117,7 @@ class LDAPEntry(compat.UnicodeMixin, object):
         self._fetch_attributes_if_exists()
         attribute = self.get_attribute(name)
         if attribute is not None:
-            self.attributes.remove(attribute)
+            self._attributes.remove(attribute)
 
     def __unicode__(self):
         return self.dn
