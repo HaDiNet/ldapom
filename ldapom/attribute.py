@@ -4,6 +4,7 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
+import copy
 import re
 import sys
 
@@ -42,6 +43,20 @@ class LDAPAttributeBase(compat.UnicodeMixin, object):
 
     def __repr__(self):
         return "<LDAPAttribute " + self.name + ">"
+
+    def __eq__(self, other):
+        return self.name == other.name and self._values == other._values
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.name, frozenset(self._values)))
+
+    def __deepcopy__(self, memo):
+        c = type(self)(self.name)
+        c._values = copy.deepcopy(self._values)
+        return c
 
 
 class SingleValueAttributeMixin(object):

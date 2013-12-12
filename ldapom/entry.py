@@ -22,7 +22,7 @@ class LDAPEntry(compat.UnicodeMixin, object):
         super(LDAPEntry, self).__setattr__('_connection', connection)
         super(LDAPEntry, self).__setattr__('_dn', dn)
         super(LDAPEntry, self).__setattr__('_attributes', None)
-        super(LDAPEntry, self).__setattr__('_old_attribute_names', set())
+        super(LDAPEntry, self).__setattr__('_fetched_attributes', None)
 
     ## Expose dn as a ready-only property
     dn = property(lambda self: self._dn)

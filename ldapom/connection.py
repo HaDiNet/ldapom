@@ -4,6 +4,8 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
+import copy
+
 from ldapom.cdef import libldap, ffi
 from ldapom import attribute
 from ldapom import compat
@@ -354,27 +356,26 @@ class LDAPConnection(object):
             raise error.LDAPomError("Cannot save without attributes "
                     "previously fetched or set.")
 
-        # Temporary attribute set that will contain deleted attributes as
-        # LDAPAttribute objects without any values.
-        save_attributes = entry._attributes.copy()
-        # Don't try to save empty attributes as this fails if the entry does
-        # not exist on the server yet.
-        if not entry_exists:
-            save_attributes = set(filter(lambda attr: len(attr._values) > 0,
-                    save_attributes))
-
-        deleted_attribute_names = entry._old_attribute_names.difference(
-                [a.name for a in entry._attributes])
-        for name in deleted_attribute_names:
-            attribute_type = self.get_attribute_type(name)
-            save_attributes.add(attribute_type(name))
+        if entry_exists:
+            assert entry._fetched_attributes is not None
+            changed_attributes = entry._attributes - entry._fetched_attributes
+            # Deleted attributes are represented as empty attributes to the LDAP server.
+            deleted_attribute_names = (frozenset(a.name for a in entry._fetched_attributes)
+                    - frozenset(a.name for a in entry._attributes))
+            for deleted_name in deleted_attribute_names:
+                deleted_attribute_type = self.get_attribute_type(deleted_name)
+                changed_attributes.add(deleted_attribute_type(deleted_name))
+        else:
+            # Don't try to save empty attributes as this fails if the entry does
+            # not exist on the server yet.
+            changed_attributes = set(filter(lambda attr: len(attr._values) > 0, entry._attributes))
 
         # Keep around references to pointers to owned memory with data that is
         # still needed.
         prevent_garbage_collection = []
 
-        mods = ffi.new("LDAPMod*[{}]".format(len(save_attributes) + 1))
-        for i, attribute in enumerate(save_attributes):
+        mods = ffi.new("LDAPMod*[{}]".format(len(changed_attributes) + 1))
+        for i, attribute in enumerate(changed_attributes):
             mod = ffi.new("LDAPMod *")
             prevent_garbage_collection.append(mod)
 
@@ -394,7 +395,7 @@ class LDAPConnection(object):
             mod.mod_vals = {"modv_strvals": modv_strvals}
 
             mods[i] = mod
-        mods[len(save_attributes)] = ffi.NULL
+        mods[len(changed_attributes)] = ffi.NULL
 
         if entry_exists:
             err = libldap.ldap_modify_ext_s(self._ld,
@@ -408,7 +409,7 @@ class LDAPConnection(object):
                     ffi.NULL, ffi.NULL)
         handle_ldap_error(err)
 
-        entry._old_attribute_names = set([a.name for a in entry._attributes])
+        entry._fetched_attributes = copy.deepcopy(entry._attributes)
 
     @_retry_reconnect
     def fetch(self, entry):
@@ -421,7 +422,7 @@ class LDAPConnection(object):
             fetched_entry = next(self._search(base=entry.dn,
                 scope=libldap.LDAP_SCOPE_BASE))
             entry._attributes = fetched_entry._attributes
-            entry._old_attribute_names = set([a.name for a in entry._attributes])
+            entry._fetched_attributes = copy.deepcopy(entry._attributes)
         except StopIteration:
             raise error.LDAPNoSuchObjectError()
 
