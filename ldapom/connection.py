@@ -165,7 +165,8 @@ class LDAPConnection(object):
         if name in self._attribute_types_by_name:
             return self._attribute_types_by_name[name]
         else:
-            raise error.LDAPAttributeNameNotFoundError
+            raise error.LDAPAttributeNameNotFoundError(
+                    'Attribute type "{}" not found.'.format(name))
 
     @_retry_reconnect
     def can_bind(self, bind_dn, bind_password):
