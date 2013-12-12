@@ -158,6 +158,15 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
                 "cn=jack,dc=example,dc=com")
         self.assertEqual(entry.sn, {"Jaqueline", "Jacky"})
 
+        entry = self.ldap_connection.get_entry(
+                "cn=jack,dc=example,dc=com")
+        entry.sn.add("Jacko")
+        entry.save()
+
+        entry = self.ldap_connection.get_entry(
+                "cn=jack,dc=example,dc=com")
+        self.assertEqual(entry.sn, {"Jaqueline", "Jacky", "Jacko"})
+
     def test_object_class_getter(self):
         entry = self.ldap_connection.get_entry(
                 "cn=daniel,dc=example,dc=com")
