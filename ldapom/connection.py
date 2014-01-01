@@ -280,6 +280,7 @@ class LDAPConnection(object):
                     attribute = attribute_type(compat._decode_utf8(name))
                     attribute._set_ldap_values(value)
                     entry._attributes.add(attribute)
+                entry._fetched_attributes = copy.deepcopy(entry._attributes)
                 yield entry
         except error.LDAPNoSuchObjectError:
             # If the search returned without results, "return" an empty generator.
