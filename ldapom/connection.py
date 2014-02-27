@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 from __future__ import print_function
 
 import copy
+import sys
 
 from ldapom.cdef import libldap, ffi
 from ldapom import attribute
@@ -89,7 +90,7 @@ class LDAPConnection(object):
     def __init__(self, uri, base, bind_dn, bind_password,
             cacertfile=None, require_cert=LDAP_OPT_X_TLS_NEVER,
             timelimit=30, max_retry_reconnect=5,
-            schema_base="cn=subschema"):
+            schema_base="cn=subschema", enable_attribute_type_mapping=True):
         """
         :param uri: URI of the server to connect to.
         :param base: Base DN for LDAP operations.
@@ -99,6 +100,9 @@ class LDAPConnection(object):
         :param timelimit: Defines the time limit after which a search
             operation should be terminated by the server
         :param schema_base: base DN for the schema description.
+        :param enable_attribute_type_mapping: Whether to enable the mapping of LDAP attribute types
+            to corresponding Python types. Requires the schema to be fetched when connecting. If
+            disabled, all attributes will be treated as a multi-value string attribute.
         """
         self._base = base
         self._uri = uri
@@ -109,6 +113,7 @@ class LDAPConnection(object):
         self._max_retry_reconnect = max_retry_reconnect
         self._timelimit = timelimit
         self._schema_base = schema_base
+        self._enable_attribute_type_mapping = enable_attribute_type_mapping
 
         self._connect()
 
@@ -145,7 +150,8 @@ class LDAPConnection(object):
                 compat._encode_utf8(self._bind_password))
         handle_ldap_error(err)
 
-        self._fetch_attribute_types()
+        if self._enable_attribute_type_mapping:
+            self._fetch_attribute_types()
 
     def _fetch_attribute_types(self):
         result = list(
@@ -167,11 +173,21 @@ class LDAPConnection(object):
         :type name: str
         :rtype: a class object, a subclass of ``LDAPAttributeBase``.
         """
-        if name in self._attribute_types_by_name:
-            return self._attribute_types_by_name[name]
+        if self._enable_attribute_type_mapping:
+            if name in self._attribute_types_by_name:
+                return self._attribute_types_by_name[name]
+            else:
+                raise error.LDAPAttributeNameNotFoundError(
+                        'Attribute type "{}" not found.'.format(name))
         else:
-            raise error.LDAPAttributeNameNotFoundError(
-                    'Attribute type "{}" not found.'.format(name))
+            # Use a multi-value string attribute as the default
+            base_classes = [attribute.MultiValueAttributeMixin,
+                            attribute.UnicodeAttributeMixin,
+                            attribute.LDAPAttributeBase]
+            if sys.version_info[0] >= 3: # Python 3
+                return type("LDAPAttribute", tuple(base_classes), {})
+            else:
+                return type(bytes("LDAPAttribute"), tuple(base_classes), {})
 
     @_retry_reconnect
     def can_bind(self, bind_dn, bind_password):
