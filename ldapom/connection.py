@@ -88,7 +88,8 @@ class LDAPConnection(object):
 
     def __init__(self, uri, base, bind_dn, bind_password,
             cacertfile=None, require_cert=LDAP_OPT_X_TLS_NEVER,
-            timelimit=30, max_retry_reconnect=5):
+            timelimit=30, max_retry_reconnect=5,
+            schema_base="cn=subschema"):
         """
         :param uri: URI of the server to connect to.
         :param base: Base DN for LDAP operations.
@@ -97,6 +98,7 @@ class LDAPConnection(object):
         :param cacertfile: If using SSL/TLS this is certificate of the server
         :param timelimit: Defines the time limit after which a search
             operation should be terminated by the server
+        :param schema_base: base DN for the schema description.
         """
         self._base = base
         self._uri = uri
@@ -106,6 +108,7 @@ class LDAPConnection(object):
         self._require_cert = require_cert
         self._max_retry_reconnect = max_retry_reconnect
         self._timelimit = timelimit
+        self._schema_base = schema_base
 
         self._connect()
 
@@ -146,7 +149,7 @@ class LDAPConnection(object):
 
     def _fetch_attribute_types(self):
         result = list(
-                self._raw_search(base="cn=subschema",
+                self._raw_search(base=self._schema_base,
                     scope=libldap.LDAP_SCOPE_BASE,
                     search_filter="(objectClass=*)",
                     retrieve_attributes=["attributeTypes"]))
