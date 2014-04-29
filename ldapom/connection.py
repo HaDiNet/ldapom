@@ -17,11 +17,6 @@ LDAP_SCOPE_BASE = libldap.LDAP_SCOPE_BASE
 LDAP_SCOPE_SUBTREE = libldap.LDAP_SCOPE_SUBTREE
 LDAP_SCOPE_ONELEVEL = libldap.LDAP_SCOPE_ONELEVEL
 
-# libldap exposes char*, ldapom uses unicode-strings where possible
-LDAP_ALL_OPERATIONAL_ATTRIBUTES = compat._decode_utf8(ffi.string(libldap.LDAP_ALL_OPERATIONAL_ATTRIBUTES))
-LDAP_ALL_USER_ATTRIBUTES = compat._decode_utf8(ffi.string(libldap.LDAP_ALL_USER_ATTRIBUTES))
-LDAP_NO_ATTRS = compat._decode_utf8(ffi.string(libldap.LDAP_NO_ATTRS))
-
 LDAP_OPT_X_TLS_NEVER = libldap.LDAP_OPT_X_TLS_NEVER
 LDAP_OPT_X_TLS_HARD = libldap.LDAP_OPT_X_TLS_HARD
 LDAP_OPT_X_TLS_DEMAND = libldap.LDAP_OPT_X_TLS_DEMAND
@@ -212,6 +207,7 @@ class LDAPConnection(object):
         return True
 
     def _raw_search(self, search_filter=None, retrieve_attributes=None,
+            retrieve_user_attributes=None, retrieve_operational_attributes=None,
             base=None, scope=libldap.LDAP_SCOPE_SUBTREE):
         """
         Raw wrapper around OpenLDAP ldap_search_ext_s.
@@ -221,6 +217,8 @@ class LDAPConnection(object):
         :type search_filter: List of str
         :param retrieve_attributes: List of attributes to retrieve. If None is
             given, all are retrieved.
+        :param retrieve_user_attributes: Fetch all user attributes.
+        :param retrieve_operational_attributes: Fetch all operational attributes.
         :type retrieve_attributes: List of str
         :param base: Search base for the query.
         :type base: str
@@ -231,6 +229,15 @@ class LDAPConnection(object):
         # Keep around references to pointers to owned memory with data that is
         # still needed.
         prevent_garbage_collection = []
+
+        if retrieve_operational_attributes is not None:
+            retrieve_attributes = retrieve_attributes or []
+            retrieve_attributes.append(
+                compat._decode_utf8(ffi.string(libldap.LDAP_ALL_OPERATIONAL_ATTRIBUTES)))
+        if retrieve_user_attributes is not None:
+            retrieve_attributes = retrieve_attributes or []
+            retrieve_attributes.append(
+                compat._decode_utf8(ffi.string(libldap.LDAP_ALL_USER_ATTRIBUTES)))
 
         if retrieve_attributes is not None:
             attrs_p = ffi.new("char*[{}]".format(len(retrieve_attributes) + 1))
