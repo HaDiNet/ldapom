@@ -17,6 +17,11 @@ LDAP_SCOPE_BASE = libldap.LDAP_SCOPE_BASE
 LDAP_SCOPE_SUBTREE = libldap.LDAP_SCOPE_SUBTREE
 LDAP_SCOPE_ONELEVEL = libldap.LDAP_SCOPE_ONELEVEL
 
+# libldap exposes char*, ldapom uses unicode-strings where possible
+LDAP_ALL_OPERATIONAL_ATTRIBUTES = compat._decode_utf8(ffi.string(libldap.LDAP_ALL_OPERATIONAL_ATTRIBUTES))
+LDAP_ALL_USER_ATTRIBUTES = compat._decode_utf8(ffi.string(libldap.LDAP_ALL_USER_ATTRIBUTES))
+LDAP_NO_ATTRS = compat._decode_utf8(ffi.string(libldap.LDAP_NO_ATTRS))
+
 LDAP_OPT_X_TLS_NEVER = libldap.LDAP_OPT_X_TLS_NEVER
 LDAP_OPT_X_TLS_HARD = libldap.LDAP_OPT_X_TLS_HARD
 LDAP_OPT_X_TLS_DEMAND = libldap.LDAP_OPT_X_TLS_DEMAND
@@ -432,7 +437,7 @@ class LDAPConnection(object):
         entry._fetched_attributes = copy.deepcopy(entry._attributes)
 
     @_retry_reconnect
-    def fetch(self, entry):
+    def fetch(self, entry, *args, **kwargs):
         """Fetch an entry's attributes from the LDAP server.
 
         :param entry: The entry to fetch.
@@ -440,7 +445,7 @@ class LDAPConnection(object):
         """
         try:
             fetched_entry = next(self._search(base=entry.dn,
-                scope=libldap.LDAP_SCOPE_BASE))
+                scope=libldap.LDAP_SCOPE_BASE, *args, **kwargs))
             entry._attributes = fetched_entry._attributes
             entry._fetched_attributes = copy.deepcopy(entry._attributes)
         except StopIteration:

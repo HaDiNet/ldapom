@@ -29,9 +29,9 @@ class LDAPEntry(compat.UnicodeMixin, object):
     rdn = property(lambda self: self.dn.split(",")[0])
     parent_dn = property(lambda self: ",".join(self.dn.split(",")[1:]))
 
-    def fetch(self):
+    def fetch(self, *args, **kwargs):
         """Fetch this entry's attributes from the LDAP server."""
-        return self._connection.fetch(self)
+        return self._connection.fetch(self, *args, **kwargs)
 
     def _fetch_attributes_if_exists(self):
         """Fetch this entry's attributes from the LDAP server if it exists.
