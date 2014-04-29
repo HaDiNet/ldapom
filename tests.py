@@ -254,27 +254,5 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
             entry.loginShell
 
 
-## Testcases for ldapom
-class LdapomTest(object):
-    ## a function applied to all input strings
-    def string_cleaner(self, x):
-        return x
-
-
-    ## test check_password method
-    def test_check_password(self):
-        s = lambda x: self.string_cleaner(x)
-        node = self.ldap_connection.get_ldap_node(s('cn=Noël,dc=example,dc=com'))
-        self.assertTrue(node.check_password(s('noel')))
-        self.assertFalse(node.check_password(s('wrong_pw')))
-
-    ## test set_password method
-    def test_set_password(self):
-        s = lambda x: self.string_cleaner(x)
-        node = self.ldap_connection.get_ldap_node(s('cn=Noël,dc=example,dc=com'))
-        node.set_password(s('asdfä'))
-        self.assertTrue(node.check_password(s('asdfä')))
-
-
 if __name__ == '__main__':
     unittest.main()
