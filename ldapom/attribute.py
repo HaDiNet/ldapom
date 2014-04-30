@@ -168,7 +168,21 @@ ATTRIBUTE_SYNTAX_TO_TYPE_MIXIN = {
         '1.3.6.1.4.1.1466.115.121.1.52': UnicodeAttributeMixin, # Telex Number
         '1.3.6.1.4.1.1466.115.121.1.54': UnicodeAttributeMixin, # LDAP Syntax Description
         '1.3.6.1.4.1.4203.666.2.7':      BytesAttributeMixin,     # OpenLDAP authz
+        # Experimental syntax used by OpenLDAP, see ITS#5573
+        '1.3.6.1.4.1.4203.666.11.2.1':   UnicodeAttributeMixin, # OpenLDAP CSN
         }
+
+
+DEFAULT_ATTRIBUTE_TYPES = [
+    # Attribute type used by OpenLDAP, but not standardized or advertized in subschema.
+    # See ITS#5573
+    "( 1.3.6.1.4.1.4203.666.1.7 NAME 'entryCSN' "
+    "DESC 'change sequence number of the entry content' "
+    "EQUALITY CSNMatch "
+    "ORDERING CSNOrderingMatch "
+    "SYNTAX 1.3.6.1.4.1.4203.666.11.2.1{64} "
+    "SINGLE-VALUE NO-USER-MODIFICATION USAGE directoryOperation )"]
+
 
 def build_attribute_types(type_definitions):
     """Build attribute types from type definitions.

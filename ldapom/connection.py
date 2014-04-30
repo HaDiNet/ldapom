@@ -154,13 +154,14 @@ class LDAPConnection(object):
             self._fetch_attribute_types()
 
     def _fetch_attribute_types(self):
+        attribute_type_definitions = attribute.DEFAULT_ATTRIBUTE_TYPES
         result = list(
                 self._raw_search(base=self._schema_base,
                     scope=libldap.LDAP_SCOPE_BASE,
                     search_filter="(objectClass=*)",
                     retrieve_attributes=["attributeTypes"]))
         # Decode the type definitions returned to strings
-        attribute_type_definitions = map(compat._decode_utf8,
+        attribute_type_definitions += map(compat._decode_utf8,
                 result[0][1][compat._encode_utf8("attributeTypes")])
 
         self._attribute_types_by_name = attribute.build_attribute_types(
