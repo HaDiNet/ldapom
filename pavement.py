@@ -5,9 +5,9 @@ from paver.easy import *
 @task
 def test(options):
     info("Running tests for Python 2")
-    sh('python2 tests.py')
+    sh('python2 -m unittest -v tests')
     info("Running tests for Python 3")
-    sh('python3 tests.py')
+    sh('python3 -m unittest -v tests')
 
 @task
 def coverage(options):
