@@ -253,6 +253,15 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
         with self.assertRaises(AttributeError):
             entry.loginShell
 
+    def test_set_binary_attribute(self):
+        entry = self.ldap_connection.get_entry("cn=daniel,dc=example,dc=com")
+        # binary_value has a NULL byte in the middle!
+        fake_jpeg = b'\xff\xd8\xff\xe0\x00\x10\xff'
+        entry.jpegPhoto = fake_jpeg
+        entry.save()
+        entry.fetch()
+        self.assertEqual(entry.jpegPhoto, {fake_jpeg})
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -29,6 +29,7 @@ loginShell: /bin/bash
 dn: cn=daniel,dc=example,dc=com
 objectClass: person
 objectClass: posixAccount
+objectClass: inetOrgPerson
 cn: daniel
 gidNumber: 11000
 homeDirectory: /home/daniel
