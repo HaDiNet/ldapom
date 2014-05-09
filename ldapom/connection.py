@@ -264,11 +264,11 @@ class LDAPConnection(object):
                 current_attribute_str = ffi.string(current_attribute)
                 attribute_dict[current_attribute_str] = []
 
-                values_p = libldap.ldap_get_values(self._ld, current_entry,
+                values_p = libldap.ldap_get_values_len(self._ld, current_entry,
                         current_attribute)
-                for i in range(0, libldap.ldap_count_values(values_p)):
-                    attribute_dict[current_attribute_str].append(
-                            ffi.string(values_p[i]))
+                for i in range(0, libldap.ldap_count_values_len(values_p)):
+                    val = ffi.buffer(values_p[i].bv_val, values_p[i].bv_len)[:]
+                    attribute_dict[current_attribute_str].append(val)
 
                 current_attribute = libldap.ldap_next_attribute(self._ld,
                         current_entry, ber_p[0])
@@ -399,21 +399,25 @@ class LDAPConnection(object):
             mod = ffi.new("LDAPMod *")
             prevent_garbage_collection.append(mod)
 
-            mod.mod_op = libldap.LDAP_MOD_REPLACE
+            mod.mod_op = libldap.LDAP_MOD_REPLACE | libldap.LDAP_MOD_BVALUES
 
             mod_type = ffi.new("char[]", compat._encode_utf8(attribute.name))
             prevent_garbage_collection.append(mod_type)
             mod.mod_type = mod_type
 
-            modv_strvals = ffi.new("char*[{}]".format(len(attribute._values) + 1))
-            prevent_garbage_collection.append(modv_strvals)
+            modv_bvals = ffi.new("BerValue*[{}]".format(len(attribute._values) + 1))
+            prevent_garbage_collection.append(modv_bvals)
             for j, value in enumerate(attribute._get_ldap_values()):
-                strval = ffi.new("char[]", value)
-                prevent_garbage_collection.append(strval)
-                modv_strvals[j] = strval
-            modv_strvals[len(attribute._values)] = ffi.NULL
-            mod.mod_vals = {"modv_strvals": modv_strvals}
-
+                modv_berval = ffi.new("BerValue *")
+                prevent_garbage_collection.append(modv_berval)
+                modv_berval.bv_len = len(value)
+                bval = ffi.new("char[]", len(value))
+                prevent_garbage_collection.append(bval)
+                ffi.buffer(bval)[:] = value
+                modv_berval.bv_val = bval
+                modv_bvals[j] = modv_berval
+            modv_bvals[len(attribute._values)] = ffi.NULL
+            mod.mod_vals = {"modv_bvals": modv_bvals}
             mods[i] = mod
         mods[len(changed_attributes)] = ffi.NULL
 

@@ -3,19 +3,29 @@ from cffi import FFI
 ffi = FFI()
 
 ffi.cdef("""
-// Type definitions
+// lber type definitions
+typedef ... BerElement;
+// Hack because cffi does not support #include in cdef.
+// These types are usually declared in lber_types.h
+typedef unsigned long ber_len_t;
+
+typedef struct berval {
+    ber_len_t bv_len;
+    char *bv_val;
+} BerValue, *BerVarray;
+
+
+// libldap type definitions
 typedef ... LDAP;
 typedef ... LDAPMessage;
 typedef ... LDAPControl;
-typedef ... BerElement;
-typedef ... berval;
 
 typedef struct ldapmod {
     int mod_op;
     char *mod_type;
     union {
         char **modv_strvals;
-    //    struct berval **modv_bvals;
+        struct berval **modv_bvals;
     } mod_vals;
 } LDAPMod;
 
@@ -34,6 +44,7 @@ typedef struct ldapmod {
 #define LDAP_MOD_ADD ...
 #define LDAP_MOD_DELETE ...
 #define LDAP_MOD_REPLACE ...
+#define LDAP_MOD_BVALUES ...
 #define LDAP_SCOPE_BASE ...
 #define LDAP_SCOPE_ONELEVEL ...
 #define LDAP_SCOPE_SUBTREE ...
@@ -65,8 +76,8 @@ LDAPMessage *ldap_first_entry( LDAP *ld, LDAPMessage *result );
 LDAPMessage *ldap_next_entry( LDAP *ld, LDAPMessage *entry );
 
 // From ldap_get_values(3)
-char **ldap_get_values(LDAP *ld, LDAPMessage *entry, char *attr);
-int ldap_count_values(char **vals);
+struct berval **ldap_get_values_len(LDAP *ld, LDAPMessage *entry, char *attr);
+int ldap_count_values_len(struct berval **vals);
 
 // From ldap_get_dn(3)
 char *ldap_get_dn( LDAP *ld, LDAPMessage *entry );
@@ -121,6 +132,7 @@ int ldap_passwd_s(
 
 // From lber-types(3)
 struct berval *ber_bvstr(const char *str);
+void ber_bvfree(struct berval *bv);
 
 """)
 
