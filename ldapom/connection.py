@@ -182,7 +182,7 @@ class LDAPConnection(object):
         else:
             # Use a multi-value string attribute as the default
             base_classes = [attribute.MultiValueAttributeMixin,
-                            attribute.UnicodeAttributeMixin,
+                            attribute.BytesAttributeMixin,
                             attribute.LDAPAttributeBase]
             if sys.version_info[0] >= 3: # Python 3
                 return type("LDAPAttribute", tuple(base_classes), {})
