@@ -270,13 +270,15 @@ class LDAPConnection(object):
                     attribute_dict[current_attribute_str].append(
                             ffi.string(values_p[i]))
 
+                libldap.ldap_memfree(current_attribute)
                 current_attribute = libldap.ldap_next_attribute(self._ld,
                         current_entry, ber_p[0])
-            # TODO: Call ber_free on ber_p[0]
+            libldap.ber_free(ber_p[0], 0)
 
             yield (dn, attribute_dict)
             current_entry = libldap.ldap_next_entry(self._ld, current_entry)
-            # TODO: Call ldap_msgfree on search_result
+
+        libldap.ldap_msgfree(search_result)
 
     @_retry_reconnect_generator
     def search(self, *args, **kwargs):

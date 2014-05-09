@@ -110,6 +110,9 @@ char *ldap_err2string( int err );
 // From ldap_msgfree(3)
 int ldap_msgfree( LDAPMessage *msg );
 
+// From ldap_memfree(3)
+void ldap_memfree(void *p);
+
 int ldap_passwd_s(
         LDAP *ld,
         struct berval        *user,
@@ -121,6 +124,9 @@ int ldap_passwd_s(
 
 // From lber-types(3)
 struct berval *ber_bvstr(const char *str);
+
+// From ber_free(3)
+void ber_free(BerElement *ber, int freebuf);
 
 """)
 
