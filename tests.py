@@ -21,8 +21,7 @@ class LDAPServerMixin(object):
                 uri=self.ldap_server.ldapi_url(),
                 base='dc=example,dc=com',
                 bind_dn='cn=admin,dc=example,dc=com',
-                bind_password='admin',
-                retrieve_operational_attributes=True)
+                bind_password='admin')
 
     def tearDown(self):
         self.ldap_server.stop()
@@ -255,11 +254,10 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
 
     def test_retrieve_operational_attributes(self):
         # Test for https://github.com/HaDiNet/ldapom/issues/29
-        entry = self.ldap_connection.get_entry("cn=daniel,dc=example,dc=com")
+        entry = self.ldap_connection.get_entry("cn=daniel,dc=example,dc=com",
+                                               retrieve_operational_attributes=True)
         entry.fetch()
         entry.entryCSN
-
-
 
 
 if __name__ == '__main__':

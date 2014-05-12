@@ -10,28 +10,37 @@ from ldapom import compat
 class LDAPEntry(compat.UnicodeMixin, object):
     """Lazy-loading LDAP entry object."""
 
-    def __init__(self, connection, dn):
+    def __init__(self, connection, dn,
+                 retrieve_attributes=None, retrieve_operational_attributes=False):
         """Creates a lazy entry object by dn.
 
         :param connection: The connection to use for this node.
         :type connection: LdapConnection
         :param dn: The DN for this node.
         :type dn: str
+        :param retrieve_attributes: List of attributes to retrieve. If None is
+            given, all user attributes are retrieved.
+        :param retrieve_operational_attributes: Retrieve operational attributes of entries in
+            addition to user attributes if retrieve_attributes is not set.
         """
         # Use super() method because __setattr__ is overridden.
         super(LDAPEntry, self).__setattr__('_connection', connection)
         super(LDAPEntry, self).__setattr__('_dn', dn)
         super(LDAPEntry, self).__setattr__('_attributes', None)
         super(LDAPEntry, self).__setattr__('_fetched_attributes', None)
+        super(LDAPEntry, self).__setattr__('_retrieve_attributes', retrieve_attributes)
+        super(LDAPEntry, self).__setattr__('_retrieve_operational_attributes', retrieve_operational_attributes)
 
     ## Expose dn as a ready-only property
     dn = property(lambda self: self._dn)
     rdn = property(lambda self: self.dn.split(",")[0])
     parent_dn = property(lambda self: ",".join(self.dn.split(",")[1:]))
 
-    def fetch(self, *args, **kwargs):
+    def fetch(self):
         """Fetch this entry's attributes from the LDAP server."""
-        return self._connection.fetch(self, *args, **kwargs)
+        return self._connection.fetch(
+            self, retrieve_attributes=self._retrieve_attributes,
+            retrieve_operational_attributes=self._retrieve_operational_attributes)
 
     def _fetch_attributes_if_exists(self):
         """Fetch this entry's attributes from the LDAP server if it exists.
