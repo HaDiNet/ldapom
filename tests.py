@@ -246,12 +246,18 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
         entry = self.ldap_connection.get_entry("cn=daniel,dc=example,dc=com")
         self.assertEqual({'superman'}, entry.description)
 
-
     def test_entry_nonexistant_single_value_attribute(self):
         entry = self.ldap_connection.get_entry("cn=daniel,dc=example,dc=com")
         del entry.loginShell
         with self.assertRaises(AttributeError):
             entry.loginShell
+
+    def test_retrieve_operational_attributes(self):
+        # Test for https://github.com/HaDiNet/ldapom/issues/29
+        entry = self.ldap_connection.get_entry("cn=daniel,dc=example,dc=com",
+                                               retrieve_operational_attributes=True)
+        entry.fetch()
+        entry.entryCSN
 
 
 if __name__ == '__main__':

@@ -90,7 +90,8 @@ class LDAPConnection(object):
     def __init__(self, uri, base, bind_dn, bind_password,
             cacertfile=None, require_cert=LDAP_OPT_X_TLS_NEVER,
             timelimit=30, max_retry_reconnect=5,
-            schema_base="cn=subschema", enable_attribute_type_mapping=True):
+            schema_base="cn=subschema", enable_attribute_type_mapping=True,
+            retrieve_operational_attributes=False):
         """
         :param uri: URI of the server to connect to.
         :param base: Base DN for LDAP operations.
@@ -154,13 +155,14 @@ class LDAPConnection(object):
             self._fetch_attribute_types()
 
     def _fetch_attribute_types(self):
+        attribute_type_definitions = attribute.DEFAULT_ATTRIBUTE_TYPES
         result = list(
                 self._raw_search(base=self._schema_base,
                     scope=libldap.LDAP_SCOPE_BASE,
                     search_filter="(objectClass=*)",
                     retrieve_attributes=["attributeTypes"]))
         # Decode the type definitions returned to strings
-        attribute_type_definitions = map(compat._decode_utf8,
+        attribute_type_definitions += map(compat._decode_utf8,
                 result[0][1][compat._encode_utf8("attributeTypes")])
 
         self._attribute_types_by_name = attribute.build_attribute_types(
@@ -207,7 +209,8 @@ class LDAPConnection(object):
         return True
 
     def _raw_search(self, search_filter=None, retrieve_attributes=None,
-            base=None, scope=libldap.LDAP_SCOPE_SUBTREE):
+            base=None, scope=libldap.LDAP_SCOPE_SUBTREE,
+            retrieve_operational_attributes=False):
         """
         Raw wrapper around OpenLDAP ldap_search_ext_s.
 
@@ -215,11 +218,13 @@ class LDAPConnection(object):
             if None is given.
         :type search_filter: List of str
         :param retrieve_attributes: List of attributes to retrieve. If None is
-            given, all are retrieved.
+            given, all user attributes are retrieved.
         :type retrieve_attributes: List of str
         :param base: Search base for the query.
         :type base: str
         :param scope: The search scope in the LDAP tree
+        :param retrieve_operational_attributes: Retrieve operational attributes of entries in
+            addition to user attributes if retrieve_attributes is not set.
         """
         search_result_p = ffi.new("LDAPMessage **")
 
@@ -227,15 +232,19 @@ class LDAPConnection(object):
         # still needed.
         prevent_garbage_collection = []
 
-        if retrieve_attributes is not None:
-            attrs_p = ffi.new("char*[{}]".format(len(retrieve_attributes) + 1))
-            for i, a in enumerate(retrieve_attributes):
-                attr_p = ffi.new("char[]", compat._encode_utf8(a))
-                prevent_garbage_collection.append(attr_p)
-                attrs_p[i] = attr_p
-            attrs_p[len(retrieve_attributes)] = ffi.NULL
-        else:
-            attrs_p = ffi.NULL
+        if retrieve_attributes is None:
+            retrieve_attributes = [
+                compat._decode_utf8(ffi.string(libldap.LDAP_ALL_USER_ATTRIBUTES))]
+            if retrieve_operational_attributes:
+                retrieve_attributes.append(
+                    compat._decode_utf8(ffi.string(libldap.LDAP_ALL_OPERATIONAL_ATTRIBUTES)))
+
+        attrs_p = ffi.new("char*[{}]".format(len(retrieve_attributes) + 1))
+        for i, a in enumerate(retrieve_attributes):
+            attr_p = ffi.new("char[]", compat._encode_utf8(a))
+            prevent_garbage_collection.append(attr_p)
+            attrs_p[i] = attr_p
+        attrs_p[len(retrieve_attributes)] = ffi.NULL
 
         err = libldap.ldap_search_ext_s(
                 self._ld,
@@ -282,17 +291,22 @@ class LDAPConnection(object):
 
     @_retry_reconnect_generator
     def search(self, *args, **kwargs):
-        """Perform an LDAP search operation.
-
-        :rtype: Iterable of LDAPEntry.
-        """
+        """Perform an LDAP search operation."""
         return self._search(*args, **kwargs)
 
-    def _search(self, *args, **kwargs):
+    def _search(self, search_filter=None, retrieve_attributes=None,
+            base=None, scope=libldap.LDAP_SCOPE_SUBTREE,
+            retrieve_operational_attributes=False):
         """Search without retry_reconnect."""
         try:
-            for dn, attributes_dict in self._raw_search(*args, **kwargs):
-                entry = LDAPEntry(self, compat._decode_utf8(dn))
+            raw_search_result = self._raw_search(search_filter=search_filter,
+                                                 retrieve_attributes=retrieve_attributes,
+                                                 base=base,scope=scope,
+                                                 retrieve_operational_attributes=retrieve_operational_attributes)
+            for dn, attributes_dict in raw_search_result:
+                entry = LDAPEntry(self, compat._decode_utf8(dn),
+                                  retrieve_attributes=retrieve_attributes,
+                                  retrieve_operational_attributes=retrieve_operational_attributes)
                 entry._attributes = set()
                 for name, value in attributes_dict.items():
                     # TODO: Create the right type of LDAPAttribute here
@@ -434,15 +448,15 @@ class LDAPConnection(object):
         entry._fetched_attributes = copy.deepcopy(entry._attributes)
 
     @_retry_reconnect
-    def fetch(self, entry):
+    def fetch(self, entry, *args, **kwargs):
         """Fetch an entry's attributes from the LDAP server.
 
         :param entry: The entry to fetch.
         :type entry: ldapom.LDAPEntry
         """
         try:
-            fetched_entry = next(self._search(base=entry.dn,
-                scope=libldap.LDAP_SCOPE_BASE))
+            fetched_entry = next(self._search(*args, base=entry.dn,
+                scope=libldap.LDAP_SCOPE_BASE, **kwargs))
             entry._attributes = fetched_entry._attributes
             entry._fetched_attributes = copy.deepcopy(entry._attributes)
         except StopIteration:
