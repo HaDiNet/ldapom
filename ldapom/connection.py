@@ -90,7 +90,8 @@ class LDAPConnection(object):
     def __init__(self, uri, base, bind_dn, bind_password,
             cacertfile=None, require_cert=LDAP_OPT_X_TLS_NEVER,
             timelimit=30, max_retry_reconnect=5,
-            schema_base="cn=subschema", enable_attribute_type_mapping=True):
+            schema_base="cn=subschema", enable_attribute_type_mapping=True,
+            retrieve_operational_attributes=False):
         """
         :param uri: URI of the server to connect to.
         :param base: Base DN for LDAP operations.
@@ -103,6 +104,7 @@ class LDAPConnection(object):
         :param enable_attribute_type_mapping: Whether to enable the mapping of LDAP attribute types
             to corresponding Python types. Requires the schema to be fetched when connecting. If
             disabled, all attributes will be treated as a multi-value string attribute.
+        :param retrieve_operational_attributes: Whether to fetch operational attributes of entries.
         """
         self._base = base
         self._uri = uri
@@ -114,6 +116,7 @@ class LDAPConnection(object):
         self._timelimit = timelimit
         self._schema_base = schema_base
         self._enable_attribute_type_mapping = enable_attribute_type_mapping
+        self._retrieve_operational_attributes = retrieve_operational_attributes
 
         self._connect()
 
@@ -208,7 +211,6 @@ class LDAPConnection(object):
         return True
 
     def _raw_search(self, search_filter=None, retrieve_attributes=None,
-            retrieve_user_attributes=None, retrieve_operational_attributes=None,
             base=None, scope=libldap.LDAP_SCOPE_SUBTREE):
         """
         Raw wrapper around OpenLDAP ldap_search_ext_s.
@@ -218,8 +220,6 @@ class LDAPConnection(object):
         :type search_filter: List of str
         :param retrieve_attributes: List of attributes to retrieve. If None is
             given, all are retrieved.
-        :param retrieve_user_attributes: Fetch all user attributes.
-        :param retrieve_operational_attributes: Fetch all operational attributes.
         :type retrieve_attributes: List of str
         :param base: Search base for the query.
         :type base: str
@@ -231,24 +231,19 @@ class LDAPConnection(object):
         # still needed.
         prevent_garbage_collection = []
 
-        if retrieve_operational_attributes is not None:
-            retrieve_attributes = retrieve_attributes or []
-            retrieve_attributes.append(
-                compat._decode_utf8(ffi.string(libldap.LDAP_ALL_OPERATIONAL_ATTRIBUTES)))
-        if retrieve_user_attributes is not None:
-            retrieve_attributes = retrieve_attributes or []
-            retrieve_attributes.append(
-                compat._decode_utf8(ffi.string(libldap.LDAP_ALL_USER_ATTRIBUTES)))
+        if retrieve_attributes is None:
+            retrieve_attributes = [
+                compat._decode_utf8(ffi.string(libldap.LDAP_ALL_USER_ATTRIBUTES))]
+            if self._retrieve_operational_attributes:
+                retrieve_attributes.append(
+                    compat._decode_utf8(ffi.string(libldap.LDAP_ALL_OPERATIONAL_ATTRIBUTES)))
 
-        if retrieve_attributes is not None:
-            attrs_p = ffi.new("char*[{}]".format(len(retrieve_attributes) + 1))
-            for i, a in enumerate(retrieve_attributes):
-                attr_p = ffi.new("char[]", compat._encode_utf8(a))
-                prevent_garbage_collection.append(attr_p)
-                attrs_p[i] = attr_p
-            attrs_p[len(retrieve_attributes)] = ffi.NULL
-        else:
-            attrs_p = ffi.NULL
+        attrs_p = ffi.new("char*[{}]".format(len(retrieve_attributes) + 1))
+        for i, a in enumerate(retrieve_attributes):
+            attr_p = ffi.new("char[]", compat._encode_utf8(a))
+            prevent_garbage_collection.append(attr_p)
+            attrs_p[i] = attr_p
+        attrs_p[len(retrieve_attributes)] = ffi.NULL
 
         err = libldap.ldap_search_ext_s(
                 self._ld,
