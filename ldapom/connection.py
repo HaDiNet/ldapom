@@ -406,6 +406,10 @@ class LDAPConnection(object):
             # not exist on the server yet.
             changed_attributes = set(filter(lambda attr: len(attr._values) > 0, entry._attributes))
 
+        # Don't try to save an empty modification set
+        if not changed_attributes:
+            return
+
         # Keep around references to pointers to owned memory with data that is
         # still needed.
         prevent_garbage_collection = []
