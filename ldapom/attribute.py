@@ -51,7 +51,7 @@ class LDAPAttributeBase(compat.UnicodeMixin, object):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash((self.name, frozenset(self._values)))
+        return hash(self.name)
 
     def __deepcopy__(self, memo):
         c = type(self)(self.name)
