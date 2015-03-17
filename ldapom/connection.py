@@ -161,6 +161,9 @@ class LDAPConnection(object):
                     scope=libldap.LDAP_SCOPE_BASE,
                     search_filter="(objectClass=*)",
                     retrieve_attributes=["attributeTypes"]))
+        if len(result) == 0:
+            raise error.LDAPCouldNotFetchAttributeTypes
+
         # Decode the type definitions returned to strings
         attribute_type_definitions += map(compat._decode_utf8,
                 result[0][1][compat._encode_utf8("attributeTypes")])
