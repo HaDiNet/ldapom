@@ -20,8 +20,8 @@ class LDAPServerMixin(object):
         self.ldap_connection = ldapom.LDAPConnection(
                 uri=self.ldap_server.ldapi_url(),
                 base='dc=example,dc=com',
-                bind_dn='cn=admin,dc=example,dc=com',
-                bind_password='admin')
+                bind_dn='cn=daniel,dc=example,dc=com',
+                bind_password='daniel')
 
     def tearDown(self):
         self.ldap_server.stop()
@@ -182,7 +182,7 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
 
     def test_search(self):
         result = self.ldap_connection.search("cn=*n*")
-        self.assertEqual(set(["Noël", "daniel"]),
+        self.assertEqual(set(["Noël", "daniel", "admin"]),
                 set([next(iter(r.cn)) for r in result]))
 
     def test_search_empty_result(self):
@@ -191,12 +191,12 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
 
     def test_rename(self):
         entry = self.ldap_connection.get_entry(
-                "cn=daniel,dc=example,dc=com")
+                "cn=jack,dc=example,dc=com")
         entry.rename("cn=dieter,dc=example,dc=com")
         self.assertTrue(entry.exists())
 
         entry = self.ldap_connection.get_entry(
-                "cn=daniel,dc=example,dc=com")
+                "cn=jack,dc=example,dc=com")
         self.assertFalse(entry.exists())
 
         entry = self.ldap_connection.get_entry(
@@ -245,6 +245,19 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
         entry.save()
         entry = self.ldap_connection.get_entry("cn=daniel,dc=example,dc=com")
         self.assertEqual({'superman'}, entry.description)
+
+    def test_entry_access_empty_attribute(self):
+        ldap_connection = ldapom.LDAPConnection(
+                uri=self.ldap_server.ldapi_url(),
+                base='dc=example,dc=com',
+                bind_dn='cn=daniel,dc=example,dc=com',
+                bind_password='daniel')
+        entry = ldap_connection.get_entry("cn=jack,dc=example,dc=com")
+        self.assertEqual(set(), entry.givenName)
+
+        # Ensure that saving doesn't trigger a write to unchanged and empty givenName
+        entry.save()
+        self.assertEqual(set(), entry.givenName)
 
     def test_entry_nonexistant_single_value_attribute(self):
         entry = self.ldap_connection.get_entry("cn=daniel,dc=example,dc=com")

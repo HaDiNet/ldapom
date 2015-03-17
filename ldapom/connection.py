@@ -24,6 +24,9 @@ LDAP_OPT_X_TLS_ALLOW = libldap.LDAP_OPT_X_TLS_ALLOW
 LDAP_OPT_X_TLS_TRY = libldap.LDAP_OPT_X_TLS_TRY
 
 
+def _filter_empty_attributes(attributes):
+    return {attr for attr in attributes if len(attr._values) > 0}
+
 def handle_ldap_error(err):
     """Given an LDAP error code, raise an error if needed.
 
@@ -397,17 +400,20 @@ class LDAPConnection(object):
 
         if entry_exists:
             assert entry._fetched_attributes is not None
-            changed_attributes = entry._attributes - entry._fetched_attributes
+            # remove empty attributes to avoid unnecessary writes
+            attributes_before = _filter_empty_attributes(entry._fetched_attributes)
+            attributes_after = _filter_empty_attributes(entry._attributes)
+            changed_attributes = attributes_after - attributes_before
             # Deleted attributes are represented as empty attributes to the LDAP server.
-            deleted_attribute_names = (frozenset(a.name for a in entry._fetched_attributes)
-                    - frozenset(a.name for a in entry._attributes))
+            deleted_attribute_names = (frozenset(a.name for a in attributes_before)
+                    - frozenset(a.name for a in attributes_after))
             for deleted_name in deleted_attribute_names:
                 deleted_attribute_type = self.get_attribute_type(deleted_name)
                 changed_attributes.add(deleted_attribute_type(deleted_name))
         else:
             # Don't try to save empty attributes as this fails if the entry does
             # not exist on the server yet.
-            changed_attributes = set(filter(lambda attr: len(attr._values) > 0, entry._attributes))
+            changed_attributes = _filter_empty_attributes(entry._attributes)
 
         # Don't try to save an empty modification set
         if not changed_attributes:

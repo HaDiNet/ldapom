@@ -87,6 +87,7 @@ class LDAPEntry(compat.UnicodeMixin, object):
                 return attribute.values
         else:
             if attribute_type.multi_value:
+                # keep reference, so changes are tracked
                 setattr(self, name, set())
                 return self.get_attribute(name).values
             else:
