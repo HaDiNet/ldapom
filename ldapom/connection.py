@@ -206,7 +206,7 @@ class LDAPConnection(object):
         """
         try:
             self.__class__(self._uri, self._base, bind_dn, bind_password,
-                    self._cacertfile)
+                    self._cacertfile, enable_attribute_type_mapping=False)
         except error.LDAPInvalidCredentialsError:
             return False
         return True
