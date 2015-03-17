@@ -122,7 +122,7 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
 
         entry = self.ldap_connection.get_entry(
                 "cn=jack,dc=example,dc=com")
-        self.assertRaises(AttributeError, getattr, entry, "loginShell")
+        self.assertIsNone(entry.loginShell)
 
     def test_modify_single_value_attribute(self):
         entry = self.ldap_connection.get_entry(
@@ -135,11 +135,11 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
                 "cn=jack,dc=example,dc=com")
         self.assertEqual(entry.loginShell, "/bin/zsh")
         entry.loginShell = None
-        self.assertEqual(entry.loginShell, None)
+        self.assertIsNone(entry.loginShell)
         entry.save()
 
         entry.fetch()
-        self.assertRaises(AttributeError, getattr, entry, "loginShell")
+        self.assertIsNone(entry.loginShell)
 
     def test_modify_multi_value_attribute(self):
         entry = self.ldap_connection.get_entry(
@@ -249,8 +249,7 @@ class LDAPomTest(LDAPServerMixin, unittest.TestCase):
     def test_entry_nonexistant_single_value_attribute(self):
         entry = self.ldap_connection.get_entry("cn=daniel,dc=example,dc=com")
         del entry.loginShell
-        with self.assertRaises(AttributeError):
-            entry.loginShell
+        self.assertIsNone(entry.loginShell)
 
     def test_retrieve_operational_attributes(self):
         # Test for https://github.com/HaDiNet/ldapom/issues/29

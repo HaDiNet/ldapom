@@ -90,7 +90,7 @@ class LDAPEntry(compat.UnicodeMixin, object):
                 setattr(self, name, set())
                 return self.get_attribute(name).values
             else:
-                raise AttributeError()
+                return None
 
     def __setattr__(self, name, value):
         """Set an attribute value.
