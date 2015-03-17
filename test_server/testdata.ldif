@@ -12,6 +12,19 @@ gidNumber: 10001
 objectClass: posixGroup
 memberUid: luke
 
+# admin, example.com
+dn: cn=admin,dc=example,dc=com
+objectClass: person
+objectClass: posixAccount
+cn: admin
+gidNumber: 11000
+homeDirectory: /home/jack
+sn: admin
+uid: admin
+uidNumber: 11142
+userPassword: admin
+loginShell: /bin/bash
+
 # jack, example.com
 dn: cn=jack,dc=example,dc=com
 objectClass: person
