@@ -1,4 +1,4 @@
-# LDAPom
+# LDAPom [![Build Status](https://travis-ci.org/HaDiNet/ldapom.svg?branch=master)](https://travis-ci.org/HaDiNet/ldapom)
 
 LDAPom is a pythonic LDAP to Python object mapper. It should work with Python 2.7 and all versions of Python 3.
 
