@@ -29,3 +29,6 @@ class LDAPAttributeNameNotFoundError(LDAPomError):
 
 class LDAPCouldNotFetchAttributeTypes(LDAPomError):
     pass
+
+class LDAPomReadOnlyError(LDAPomError):
+    pass

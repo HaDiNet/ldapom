@@ -86,7 +86,7 @@ class LDAPEntry(compat.UnicodeMixin, object):
             else:
                 return attribute.values
         else:
-            if attribute_type.multi_value:
+            if attribute_type.multi_value and not self._connection.is_read_only():
                 setattr(self, name, set())
                 return self.get_attribute(name).values
             else:
