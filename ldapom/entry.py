@@ -162,3 +162,15 @@ class LDAPEntry(compat.UnicodeMixin, object):
         :rtype: boolean
         """
         return self._connection.can_bind(self.dn, bind_password)
+
+    def has_attribute(self, attribute):
+        """Return whether or not this attribute really exists
+
+        :param attribute: Name of the attribute
+        :type attribute: str
+        :rtype: boolean
+        """
+        attribute = self.get_attribute(attribute)
+        if attribute is None:
+            return False
+        return attribute.is_present()

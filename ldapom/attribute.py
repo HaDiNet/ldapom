@@ -58,6 +58,9 @@ class LDAPAttributeBase(compat.UnicodeMixin, object):
         c._values = copy.deepcopy(self._values)
         return c
 
+    def is_present(self):
+        return bool(self._values)
+
 
 class SingleValueAttributeMixin(object):
     single_value = True
