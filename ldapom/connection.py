@@ -91,7 +91,7 @@ class LDAPConnection(object):
             cacertfile=None, require_cert=LDAP_OPT_X_TLS_NEVER,
             timelimit=30, max_retry_reconnect=5,
             schema_base="cn=subschema", enable_attribute_type_mapping=True,
-            retrieve_operational_attributes=False):
+            retrieve_operational_attributes=False, read_only=False):
         """
         :param uri: URI of the server to connect to.
         :param base: Base DN for LDAP operations.
@@ -104,6 +104,8 @@ class LDAPConnection(object):
         :param enable_attribute_type_mapping: Whether to enable the mapping of LDAP attribute types
             to corresponding Python types. Requires the schema to be fetched when connecting. If
             disabled, all attributes will be treated as a multi-value string attribute.
+        :param read_only: Do not try to modify entries, do not return empty sets on missing
+            attributes.
         """
         self._base = base
         self._uri = uri
@@ -115,6 +117,7 @@ class LDAPConnection(object):
         self._timelimit = timelimit
         self._schema_base = schema_base
         self._enable_attribute_type_mapping = enable_attribute_type_mapping
+        self._read_only = read_only
 
         self._connect()
 
@@ -337,6 +340,8 @@ class LDAPConnection(object):
         :param recursive: If subentries should be deleted recursively.
         :type recursive: bool
         """
+        if self._read_only:
+            raise error.LDAPomReadOnlyError
         if recursive:
             entries_to_delete = self._connection._search(
                     base=entry.dn,
@@ -356,6 +361,9 @@ class LDAPConnection(object):
         :param new_dn: The DN that the entry should have after the rename.
         :type new_dn: str
         """
+        if self._read_only:
+            raise error.LDAPomReadOnlyError
+
         new_rdn, new_parent_dn = new_dn.split(",", 1)
         if new_parent_dn == entry.parent_dn:
             new_parent_dn = None
@@ -389,6 +397,8 @@ class LDAPConnection(object):
         :param entry: The entry to save.
         :type entry: ldapom.LDAPEntry
         """
+        if self._read_only:
+            raise error.LDAPomReadOnlyError
         entry_exists = entry.exists()
         # Refuse to save if attributes have not been fetched or set explicitly.
         if entry._attributes is None:
@@ -482,6 +492,8 @@ class LDAPConnection(object):
         :param password: The password to set.
         :type password: str
         """
+        if self._read_only:
+            raise error.LDAPomReadOnlyError
         password_p = ffi.new("char[]", compat._encode_utf8(password))
         password_berval = libldap.ber_bvstr(password_p)
         entry_dn_p = ffi.new("char[]", compat._encode_utf8(entry.dn))
@@ -493,3 +505,6 @@ class LDAPConnection(object):
                 password_berval, password_berval,
                 ffi.NULL, ffi.NULL)
         handle_ldap_error(err)
+
+    def is_read_only(self):
+        return self._read_only
